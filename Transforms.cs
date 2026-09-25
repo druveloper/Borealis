@@ -11,7 +11,7 @@ public class Transforms
         return new Point(x, y);
     }
 
-    public static Point FlowUp( double x, double y)
+    public static Point FlowUp(double x, double y)
     {
         return new Point(
             x,
@@ -30,8 +30,8 @@ public class Transforms
     public static Point Custom(double x, double y)
     {
         return new Point(
-            x + .05 * Math.Sin(y * Math.PI * 3.0), // + 2.0 * Math.Cos(n * k),
-            y + .05 * Math.Cos(x * Math.PI * 3.0)  // + 2.0 * Math.Sin(n * k)
+            x + .15 * Math.Sin(y * Math.PI * 3.0), // + 2.0 * Math.Cos(n * k),
+            y + .15 * Math.Cos(x * Math.PI * 3.0)  // + 2.0 * Math.Sin(n * k)
         );
     }
 }

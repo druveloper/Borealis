@@ -8,57 +8,85 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.OpenGL;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using avaTest.ViewModels;
 using Tmds.DBus.Protocol;
 
 namespace avaTest.Views;
 
 public partial class MainWindow : Window
 {
-    public byte[]? Bytes = null;
+    private const int ImageWidth = 400;
+    private const int ImageHeight = 400;
+    private MainViewModel ViewModel;
+    private byte[]? Bytes = null;
+    private ByteDrawer Drawer;
     private delegate Point PointTransform(double x, double y);
-    private PointTransform Transform = Transforms.Custom;
+    private PointTransform Transform = Transforms.Shrink;
     private DateTime StartTime = DateTime.Now;
+    private DateTime LastTimerRun = DateTime.Now;
     private System.Threading.Timer? Timer = null;
     private bool IsTimerStopped = false;
     private double T = 0;
     private CoordinateConverter Coord = new CoordinateConverter(400, 400, new Point(2, 2), new Point(0, 0));
-    private Point[] _points = [new Point(-0.170, 0.281), new Point(0.58, 0.66), new Point(0.338, 0.61)];
+    private Point[] Moons = [new Point(-0.170, 0.281), new Point(0.58, 0.66), new Point(0.338, 0.61)];
     // private Point[] _points = [new Point(170, 281), new Point(88, 96), new Point(338, 81)];
+    private bool IsVectorFieldVisible = false;
+    private Point? CursorPosition = null; // cursor position when over the graph image
 
     public MainWindow()
     {
         InitializeComponent();
 
-        Bytes = new byte[400 * 400 * 4];
+        ViewModel = new MainViewModel();
+        DataContext = ViewModel;
+
+        // Bytes = new byte[ImageWidth * ImageHeight * 4];
+        Drawer = new ByteDrawer(ImageWidth, ImageHeight, ByteDrawer.Format.BGRA);
+        Drawer.BackgroundColor = System.Drawing.Color.Black;
+        Bytes = Drawer.Bytes;
 
         clearBitmap();
-        
-        drawBitmap(_points, 0);
 
-        MainImage.LoadImage(400, 400, Bytes);
+        //overlayBitmap(_moons, 0);
+
+        MainImage.LoadImage(ImageWidth, ImageWidth, Bytes);
 
         if (Design.IsDesignMode)
         {
             return;
         }
 
+        // MainImage.Render();
 
         Timer = new Timer((n =>
         {
-            // return if UI is done
-            if (!Dispatcher.UIThread.Thread.IsAlive)
+            // check TimerSpeed
+            int timerSpeed = 0;
+            Dispatcher.Invoke(() =>
             {
-                return;
+                timerSpeed = (int)TimerSpeedSlider.Value;
+            });
+            if (timerSpeed < 1000)
+            {
+                if ((DateTime.Now - LastTimerRun).TotalMilliseconds < 2100 - 2 * timerSpeed)
+                {
+                    return;
+                }
+
+                LastTimerRun = DateTime.Now;
             }
+
 
             double t = 0;
             if (!IsTimerStopped)
             {
-                t = T + (DateTime.Now - StartTime).TotalMilliseconds / 1000.0;
+                t = T + simulatedElapsedTime();
             }
             else
             {
@@ -78,15 +106,20 @@ public partial class MainWindow : Window
                     showInfo(e.Message);
                 }
             }
+            else if (IsVectorFieldVisible)
+            {
+                vectorFieldCallback();
+            }
 
             MainImage.Render();
             // Dispatcher.UIThread.Invoke(() => MainImage.Render());
-        }), null, 800, 80);
 
-        // Timer = new Avalonia.Threading.DispatcherTimer();
-        // Timer.Interval = TimeSpan.FromMilliseconds(800);
-        // Timer.Tick += TimerCallback;
-        //Timer.Start();
+        }), null, 800, 100);
+    }
+
+    private double simulatedElapsedTime()
+    {
+        return (DateTime.Now - StartTime).TotalMilliseconds * 100 / (2100 - 2 * ViewModel.TimerSpeed) / 1000.0;
     }
 
     private void showInfo(string info)
@@ -96,165 +129,100 @@ public partial class MainWindow : Window
 
     private void clearBitmap()
     {
-        for (double x = -200; x < 200; x++)
-        {
-            for (double y = -200; y < 200; y++)
-            {
-                setPoint(x / 200.0, y / 200.0, 0, 0, 0, 255);
-            }
-        }
+        Drawer.DrawEveryPixel((int x, int y) => {
+            Drawer.SetPixelColor(x, y, 0, 0, 0);
+        });
     }
 
-    private void drawBitmap(Point[] points, double t)
+    private void overlayBitmap(Point[] moons, double t)
     {
-        // for (int x = 0; x < 400; x++)
-        // {
-        //     int y = (int)(200 + 50 * Math.Cos((x - 200) / 20.0 + t));
-        //     setPixel(x, y, 255, 0, 0);
-        // }
+        Drawer.DrawEveryPixel((int ix, int iy) => {
 
-        // var n = ((t * 20) + 20) % 20;
+            var point = Coord.PixelToPoint(ix, iy);
+            double x = point.X;
+            double y = point.Y;
 
-        // double px, py;
-        // double r, g, b;
-        // double pixelWidth = 2.0 / 400;
+            var dist1 = Math.Max(0, Math.Min(0.50, Math.Abs(x - moons[0].X) + Math.Abs(y - moons[0].Y)));
+            var dist2 = Math.Max(0, Math.Min(0.50, Math.Abs(x - moons[1].X) + Math.Abs(y - moons[1].Y)));
+            var dist3 = Math.Max(0, Math.Min(0.50, Math.Abs(x - moons[2].X) + Math.Abs(y - moons[2].Y)));
 
-        // for (double x = 0; x < 400; x += 20)
-        // {
-        //     for (double y = 0; y < 400; y += 20)
-        //     {
-        //         var point = Coord.PixelToPoint((int)(x+n), (int)(y+n));
-        //         px = point.X;
-        //         py = point.Y;
-        //         r = 255 * (x / 400.0);
-        //         g = 255 * (y / 400.0);
-        //         b = 255 * ((x + y) / 400.0);
-
-        //         setPoint(px + 0, py + 0, r, g, b);
-        //         setPoint(px + pixelWidth, py + 0, r, g, b);
-        //         setPoint(px + 0, py + pixelWidth, r, g, b);
-        //         setPoint(px + pixelWidth, py + pixelWidth, r, g, b);
-        //     }
-        // }
-
-
-        double x, y;
-        for (double iy = -200; iy < 200; iy++)
-        {
-            for (double ix = -200; ix < 200; ix++)
-            {
-                x = ix / 200;
-                y = iy / 200;
-                var dist1 = Math.Max(0, Math.Min(0.50, Math.Abs(x - points[0].X) + Math.Abs(y - points[0].Y)));
-                var dist2 = Math.Max(0, Math.Min(0.50, Math.Abs(x - points[1].X) + Math.Abs(y - points[1].Y)));
-                var dist3 = Math.Max(0, Math.Min(0.50, Math.Abs(x - points[2].X) + Math.Abs(y - points[2].Y)));
-
-                var oldPoint = getPoint(x, y);
-                var newPoint = new Pixel(x, y,
-                    (byte)(255 - 255 * Math.Pow(dist1 / 0.50, 1)),
-                    (byte)(255 - 255 * Math.Pow(dist2 / 0.50, 1)),
-                    (byte)(255 - 255 * Math.Pow(dist3 / 0.50, 1)),
-                    255
-                );
-
-                // blend with existing data
-                setPoint(x, y,
-                    .9 * oldPoint.r + .5 * newPoint.r,
-                    .9 * oldPoint.g + .5 * newPoint.g,
-                    .9 * oldPoint.b + .5 * newPoint.b,
-                    255
-                );
-
-                // setPixel(x, y,
-                //     (byte)(255 * x / 400.0),
-                //     (byte)(255 * y / 400.0),
-                //     (byte)(255 * (x + y) / 800.0),
-                //     255
-                // );
-            }
-        }
+            Drawer.OverlayPixel(ix, iy,
+                255 - 255 * Math.Pow(dist1 / 0.50, 1),
+                255 - 255 * Math.Pow(dist2 / 0.50, 1),
+                255 - 255 * Math.Pow(dist3 / 0.50, 1)
+            );
+        });
 
         return;
     }
 
     private void timerCallback(double t) //object? state) //, EventArgs? e = null)
     {
-        if (Bytes == null) return;
-
-        //ShowInfo(((int)(2 * Math.Cos(t / 2000.0))).ToString());
+        /******** Normal Renderiing ********/
 
         // warp frame using vector function
 
-        double n = t % 2000;
-        double k = Math.PI / 200.0;
-        for (int y = 0; y < 400; y++)
-        {
-            for (int x = 0; x < 400; x++)
-            {
-                var point1 = Coord.PixelToPoint(x, y);
+        // double n = t % 2000;
+        // double k = Math.PI / 200.0;
+        Drawer.DrawEveryPixel((int x, int y) => {
+            var point1 = Coord.PixelToPoint(x, y);
 
-                var point2 = Transform(point1.X, point1.Y);
+            var point2 = Transform(point1.X, point1.Y);
 
-                var p2 = getPoint(point2.X, point2.Y);
+            var p2 = getPoint(point2.X, point2.Y);
 
+            setPoint(point1.X, point1.Y, p2.r - 10, p2.g - 10, p2.b - 10, 255);
+        });
 
-                setPoint(point1.X, point1.Y, p2.r - 10, p2.g - 10, p2.b - 10, 255);
-            }
-        }
+        // MainImage.Render();
+        // Thread.Sleep(80 * 15);
 
         // redraw new bitmap
 
-        _points[0] = rotatePoint(_points[0], .15);
-        _points[1] = rotatePoint(_points[1], .10);
-        _points[2] = rotatePoint(_points[2], .05);
+        Moons[0] = rotatePoint(Moons[0], .15);
+        Moons[1] = rotatePoint(Moons[1], .10);
+        Moons[2] = rotatePoint(Moons[2], .05);
 
-        drawBitmap(_points, n);
+        overlayBitmap(Moons, 0);
     }
 
-    private long getPixelIndex(byte[] bytes, int x, int y)
+    private void vectorFieldCallback()
     {
-        // x = Math.Max(0, Math.Min(400 - 1, x)); // ensure x is within range
-        // y = Math.Max(0, Math.Min(400 - 1, y)); // ensure y is within range
+        /******** Vector Field Renderiing ********/
 
-        if (x < 0 || x >= 400 || y < 0 || y >= 400)
+
+        // display Vector Field and the vector at cursor position
+
+        drawVectorField();
+
+        if (CursorPosition is null)
         {
-            //throw new IndexOutOfRangeException("Way off!!");
-            return -1;
+            return;
         }
 
-        x = (400 + x) % 400; // ensure x is within range
-        y = (400 + y) % 400; // ensure y is within range
+        var mouseX = (int)CursorPosition.Value.X;
+        var mouseY = (int)CursorPosition.Value.Y;
 
-        return (4 * (400 * y + x));
+        var point1 = Coord.PixelToPoint(mouseX, mouseY);
+        var point2 = Transform(point1.X, point1.Y);
+
+        var pixel2 = Coord.PointToPixel(point2);
+
+        Drawer.DrawLine(mouseX, mouseY, pixel2.X, pixel2.Y, System.Drawing.Color.White);
     }
 
-    private Pixel getPoint(double x, double y)
+    private GraphPoint getPoint(double x, double y)
     {
         var p = Coord.PointToPixel(x, y);
-        long i = getPixelIndex(Bytes, p.X, p.Y);
-
-        if (i < 0)
-        {
-            return new Pixel(0, 0, 0, 0, 0, 255);
-        }
-
-        return new Pixel(x, y, Bytes[i + 2], Bytes[i + 1], Bytes[i + 0], Bytes[i + 3]);
+        
+        return new GraphPoint(new Point(x, y), Drawer.GetPixelColor(p.X, p.Y));
     }
 
     private void setPoint(double x, double y, double r, double g, double b, double a = 255)
     {
         var p = Coord.PointToPixel(x, y);
-        long i = getPixelIndex(Bytes, p.X, p.Y);
-
-        if (i < 0)
-        {
-            return;
-        }
-
-        Bytes[i] = (byte)Math.Max(0, Math.Min(255, b));
-        Bytes[i + 1] = (byte)Math.Max(0, Math.Min(255, g));
-        Bytes[i + 2] = (byte)Math.Max(0, Math.Min(255, r));
-        Bytes[i + 3] = (byte)Math.Max(0, Math.Min(255, a));
+        
+        Drawer.SetPixelColor(p.X, p.Y, r, g, b, a);
     }
 
     private Point rotatePoint(Point p, double angleDelta, Point? center = null)
@@ -286,19 +254,20 @@ public partial class MainWindow : Window
         return new Point(s.X + c.X, s.Y + c.Y);
     }
 
-    private void displayPixelInfo(double x, double y)
+    private void displayPointInfo(double x, double y)
     {
-        var pixel = getPoint(x, y);
+        var point = getPoint(x, y);
 
-        xTextBox.Text = pixel.x.ToString();
-        yTextBox.Text = pixel.y.ToString();
-        rTextBlock.Text = ((int)pixel.r).ToString();
-        gTextBlock.Text = ((int)pixel.g).ToString();
-        bTextBlock.Text = ((int)pixel.b).ToString();
+        xTextBox.Text = point.x.ToString("F4");
+        yTextBox.Text = point.y.ToString("F4");
+        rTextBlock.Text = ((int)point.r).ToString();
+        gTextBlock.Text = ((int)point.g).ToString();
+        bTextBlock.Text = ((int)point.b).ToString();
+        aTextBlock.Text = ((int)point.a).ToString();
 
-        var point = Transform(x, y);
-        fxTextBlock.Text = point.X.ToString();
-        fyTextBlock.Text = point.Y.ToString();
+        var point2 = Transform(x, y);
+        fxTextBlock.Text = point2.X.ToString("F4");
+        fyTextBlock.Text = point2.Y.ToString("F4");
     }
 
     private void PauseButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -311,7 +280,7 @@ public partial class MainWindow : Window
         else
         {
             IsTimerStopped = true;
-            T += (DateTime.Now - StartTime).TotalMilliseconds / 1000.0;
+            T += simulatedElapsedTime();
         }
     }
 
@@ -326,38 +295,58 @@ public partial class MainWindow : Window
         {
             var p = Coord.PixelToPoint((int)e.MousePoint.X, (int)e.MousePoint.Y);
 
-            displayPixelInfo(p.X, p.Y);
+            displayPointInfo(p.X, p.Y);
             return;
         }
     }
 
-    private void drawPoint(int px, int py, int size)
+    private void drawDot(int px, int py, int size)
     {
-        double pixelWidth = 2.0 / 400;
-        var p = Coord.PixelToPoint(px, py);
-
-        if (p.X < -1 || p.X > 1 || p.Y < -1 || p.Y > 1)
+        if (px < 0 || px > ImageWidth || py < 0 || py > ImageWidth)
         {
             return;
         }
 
-        byte r = 255, g = 255, b = 255;
+        System.Drawing.Color color = System.Drawing.Color.White;
 
-        setPoint(p.X + 0         , p.Y + 0         , r, g, b);
-        setPoint(p.X + pixelWidth, p.Y + 0         , r, g, b);
-        setPoint(p.X + 0         , p.Y + pixelWidth, r, g, b);
-        setPoint(p.X + pixelWidth, p.Y + pixelWidth, r, g, b);
+        Drawer.DoDrawingOperation(() => {
+            Drawer.SetPixelColor(px, py, color);
+            Drawer.SetPixelColor(px+1, py, color);
+            Drawer.SetPixelColor(px, py+1, color);
+            Drawer.SetPixelColor(px+1, py+1, color);
+        });
+    }
+
+    private void drawVectorField()
+    {
+        double pixelWidth = Coord.GraphSize.X / Coord.ImageWidth;
+        Drawer.DrawEveryPixel((int x, int y) => {
+            var point1 = Coord.PixelToPoint(x, y);
+
+            var point2 = Transform(point1.X, point1.Y);
+
+            var p2 = getPoint(point2.X, point2.Y);
+
+            double dist = Avalonia.Point.Distance(point1, point2) / pixelWidth / 10.0;
+            Drawer.SetPixelColor(x, y, 255 * (dist - 1), 255 * dist /* (dist < 1 ? 1:0)*/, 255 * (1 - dist), 255);
+        });
     }
 
     private void MainImage_PointerMoved(object? sender, Avalonia.Input.PointerEventArgs e)
     {
+        if (IsVectorFieldVisible)
+        {
+            CursorPosition = e.GetCurrentPoint(MainImage).Position;
+            return;
+        }
+
         if (!e.Properties.IsLeftButtonPressed)
         {
             return;
         }
 
         var p = e.GetCurrentPoint(MainImage).Position;
-        drawPoint((int)p.X, (int)p.Y, 2);
+        drawDot((int)p.X, (int)p.Y, 2);
     }
 
     private void MainImage_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
@@ -368,6 +357,46 @@ public partial class MainWindow : Window
         }
 
         var p = e.GetCurrentPoint(MainImage).Position;
-        drawPoint((int)p.X, (int)p.Y, 2);
+        drawDot((int)p.X, (int)p.Y, 2);
+    }
+
+    private void MainImage_PointerExited(object? sender, PointerEventArgs e)
+    {
+        CursorPosition = null;
+    }
+
+    private void OverlayButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        overlayBitmap(Moons, T);
+    }
+
+    private void ClearButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        clearBitmap();
+    }
+
+    private void VectorButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (!IsVectorFieldVisible)
+        {
+            IsTimerStopped = true;
+            PauseButton.IsEnabled = false;
+            OverlayButton.IsEnabled = false;
+
+            VectorButton.Content = "Live Iamge";
+        }
+        else
+        {
+            clearBitmap();
+            overlayBitmap(Moons, T);
+
+            PauseButton.IsEnabled = true;
+            OverlayButton.IsEnabled = true;
+
+            MainImage.Render();
+            VectorButton.Content = "Vector Field";
+        }
+
+        IsVectorFieldVisible = !IsVectorFieldVisible;
     }
 }

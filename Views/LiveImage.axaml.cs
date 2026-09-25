@@ -20,7 +20,7 @@ public class LiveImage : TemplatedControl
     private WriteableBitmap? _image = null;
     private int _width, _height;
     private Avalonia.Threading.Dispatcher _dispatcher;
-    private IntPtr _outputBytes;
+    private bool _renderPaused = true;
     public byte[]? _inputBytes = null;
 
     // #region Events
@@ -88,16 +88,22 @@ public class LiveImage : TemplatedControl
         _height = height;
 
         _inputBytes = bytes;
+
+        Render();
     }
 
     public override void Render(DrawingContext context)
     {
+        // if (_renderPaused) return;
+
         if (_inputBytes is null || _image is null) return;
 
         var destRect = new Rect(0, 0, Bounds.Width, Bounds.Height);
         var sourceRect = new Rect(0, 0, _image.Size.Width, _image.Size.Height);
         
         context.DrawImage(_image, sourceRect, destRect);
+
+        // _renderPaused = true;
     }
 
     public void Render()
@@ -112,6 +118,7 @@ public class LiveImage : TemplatedControl
             }
         }
 
+        // _renderPaused = false;
         Dispatcher.UIThread.Post(InvalidateVisual, DispatcherPriority.Background);
 
     }
