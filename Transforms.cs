@@ -6,32 +6,27 @@ namespace avaTest;
 
 public class Transforms
 {
-    public static Point Identity(double x, double y)
+    public static void Identity(double x, double y, out double xout, out double yout)
     {
-        return new Point(x, y);
+        xout = x;
+        yout = y;
     }
 
-    public static Point FlowUp(double x, double y)
+    public static void FlowUp(double x, double y, out double xout, out double yout)
     {
-        return new Point(
-            x,
-            y - 0.01
-        );
+        xout = x;
+        yout = y - 0.01;
     }
 
-    public static Point Shrink(double x, double y)
+    public static void Shrink(double x, double y, out double xout, out double yout)
     {
-        return new Point(
-            x * 1.005,
-            y * 1.005
-        );
+        xout = x * 1.05;
+        yout = y * 1.05;
     }
 
-    public static Point Custom(double x, double y)
+    public static void Swirls(double x, double y, out double xout, out double yout)
     {
-        return new Point(
-            x + .15 * Math.Sin(y * Math.PI * 3.0), // + 2.0 * Math.Cos(n * k),
-            y + .15 * Math.Cos(x * Math.PI * 3.0)  // + 2.0 * Math.Sin(n * k)
-        );
+        xout = x + .15 * Math.Sin(y * Math.PI * 3.0); // + 2.0 * Math.Cos(n * k),
+        yout = y + .15 * Math.Cos(x * Math.PI * 3.0); // + 2.0 * Math.Sin(n * k)
     }
 }

@@ -12,6 +12,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Input;
+using System.Threading;
 
 namespace avaTest.Views;
 
@@ -21,6 +22,7 @@ public class LiveImage : TemplatedControl
     private int _width, _height;
     private Avalonia.Threading.Dispatcher _dispatcher;
     private bool _renderPaused = true;
+    private Lock _readLock; // locks bytes while copying
     public byte[]? _inputBytes = null;
 
     // #region Events
@@ -73,7 +75,7 @@ public class LiveImage : TemplatedControl
         // }
     }
 
-    public void LoadImage(int width = 400, int height = 400, byte[]? bytes = null)
+    public void LoadImage(int width, int height, byte[] bytes, Lock readLock)
     {
         if (bytes == null) return;
 
@@ -88,6 +90,7 @@ public class LiveImage : TemplatedControl
         _height = height;
 
         _inputBytes = bytes;
+        _readLock = readLock;
 
         Render();
     }
@@ -108,6 +111,7 @@ public class LiveImage : TemplatedControl
 
     public void Render()
     {
+        // _readLock.Enter();
         using(var outputBuffer = _image.Lock())
         {
             int stride = outputBuffer.RowBytes;
@@ -117,6 +121,7 @@ public class LiveImage : TemplatedControl
                 Marshal.Copy(_inputBytes, 4 * row * _width, outputBuffer.Address + row * stride, 4 * _width);
             }
         }
+        // _readLock.Exit();
 
         // _renderPaused = false;
         Dispatcher.UIThread.Post(InvalidateVisual, DispatcherPriority.Background);

@@ -40,7 +40,7 @@
             </StackPanel>
         </StackPanel>
         <Border Grid.Column="1" Grid.Row="1" BorderBrush="Black" BorderThickness="2">
-            <local:LiveImage Name="MainImage" Width="400" Height="400" Cursor="Cross"
+            <local:LiveImage Name="MainImage" MaxWidth="400" MaxHeight="400" Cursor="Cross"
                     Click="MainImage_Click"
                     PointerPressed="MainImage_PointerPressed"
                     PointerMoved="MainImage_PointerMoved"

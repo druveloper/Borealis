@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -13,6 +14,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.OpenGL;
 using Avalonia.Platform;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using avaTest.ViewModels;
 using Tmds.DBus.Protocol;
@@ -26,7 +28,7 @@ public partial class MainWindow : Window
     private MainViewModel ViewModel;
     private byte[]? Bytes = null;
     private ByteDrawer Drawer;
-    private delegate Point PointTransform(double x, double y);
+    private delegate void PointTransform(double x, double y, out double xout, out double yout);
     private PointTransform Transform = Transforms.Shrink;
     private DateTime StartTime = DateTime.Now;
     private DateTime LastTimerRun = DateTime.Now;
@@ -55,7 +57,7 @@ public partial class MainWindow : Window
 
         //overlayBitmap(_moons, 0);
 
-        MainImage.LoadImage(ImageWidth, ImageWidth, Bytes);
+        MainImage.LoadImage(ImageWidth, ImageWidth, Bytes, Drawer.ByteLock);
 
         if (Design.IsDesignMode)
         {
@@ -64,8 +66,11 @@ public partial class MainWindow : Window
 
         // MainImage.Render();
 
-        Timer = new Timer((n =>
+        //Timer = new Timer((n =>
+        (new Task(() =>
         {
+            while(true)
+            {
             // check TimerSpeed
             int timerSpeed = 0;
             Dispatcher.Invoke(() =>
@@ -108,13 +113,17 @@ public partial class MainWindow : Window
             }
             else if (IsVectorFieldVisible)
             {
-                vectorFieldCallback();
+                vectorFieldCallback(t);
             }
 
             MainImage.Render();
             // Dispatcher.UIThread.Invoke(() => MainImage.Render());
 
-        }), null, 800, 100);
+            Thread.Sleep(1000 / 32);
+            }
+
+        //}), null, 800, 1000 / 10);
+        })).Start();
     }
 
     private double simulatedElapsedTime()
@@ -129,31 +138,38 @@ public partial class MainWindow : Window
 
     private void clearBitmap()
     {
-        Drawer.DrawEveryPixel((int x, int y) => {
-            Drawer.SetPixelColor(x, y, 0, 0, 0);
+        Drawer.DrawEveryPixel((ByteDrawer d, int x, int y) => {
+            d.SetPixelColor(x, y, 0, 0, 0);
         });
     }
 
     private void overlayBitmap(Point[] moons, double t)
     {
-        Drawer.DrawEveryPixel((int ix, int iy) => {
-
-            var point = Coord.PixelToPoint(ix, iy);
-            double x = point.X;
-            double y = point.Y;
-
-            var dist1 = Math.Max(0, Math.Min(0.50, Math.Abs(x - moons[0].X) + Math.Abs(y - moons[0].Y)));
-            var dist2 = Math.Max(0, Math.Min(0.50, Math.Abs(x - moons[1].X) + Math.Abs(y - moons[1].Y)));
-            var dist3 = Math.Max(0, Math.Min(0.50, Math.Abs(x - moons[2].X) + Math.Abs(y - moons[2].Y)));
-
-            Drawer.OverlayPixel(ix, iy,
-                255 - 255 * Math.Pow(dist1 / 0.50, 1),
-                255 - 255 * Math.Pow(dist2 / 0.50, 1),
-                255 - 255 * Math.Pow(dist3 / 0.50, 1)
-            );
+        Drawer.DoDrawingOperation((ByteDrawer d) => {
+            drawMoon(d, moons[0], Color.FromRgb(255, 0, 0));
+            drawMoon(d, moons[1], Color.FromRgb(0, 255, 0));
+            drawMoon(d, moons[2], Color.FromRgb(0, 0, 255));
         });
 
         return;
+    }
+
+    private void drawMoon(ByteDrawer din, Point moon, Color color)
+    {
+        Point point;
+        double x, y, dist;
+        din.DrawEveryPixel((ByteDrawer d, int ix, int iy) => {
+            point = Coord.PixelToPoint(ix, iy);
+            x = point.X;
+            y = point.Y;
+            dist = Math.Max(0, Math.Min(0.50, Math.Abs(x - moon.X) + Math.Abs(y - moon.Y)));
+
+            d.OverlayPixel(ix, iy,
+                color.R * (1 - Math.Pow(dist / 0.50, 1)),
+                color.G * (1 - Math.Pow(dist / 0.50, 1)),
+                color.B * (1 - Math.Pow(dist / 0.50, 1))
+            );
+        });
     }
 
     private void timerCallback(double t) //object? state) //, EventArgs? e = null)
@@ -164,14 +180,18 @@ public partial class MainWindow : Window
 
         // double n = t % 2000;
         // double k = Math.PI / 200.0;
-        Drawer.DrawEveryPixel((int x, int y) => {
+        double xt, yt;
+        Drawer.DrawEveryPixel((ByteDrawer d, int x, int y) => {
             var point1 = Coord.PixelToPoint(x, y);
 
-            var point2 = Transform(point1.X, point1.Y);
+            
+            Transform(point1.X, point1.Y, out xt, out yt);
 
-            var p2 = getPoint(point2.X, point2.Y);
+            var p2 = getPoint(xt, yt);
 
-            setPoint(point1.X, point1.Y, p2.r - 10, p2.g - 10, p2.b - 10, 255);
+            d.SetPixelColor(x, y, p2.r - 5, p2.g - 5, p2.b - 5, 255);
+
+            //setPoint(point1.X, point1.Y, p2.r - 10, p2.g - 10, p2.b - 10, 255);
         });
 
         // MainImage.Render();
@@ -186,7 +206,7 @@ public partial class MainWindow : Window
         overlayBitmap(Moons, 0);
     }
 
-    private void vectorFieldCallback()
+    private void vectorFieldCallback(double t)
     {
         /******** Vector Field Renderiing ********/
 
@@ -202,13 +222,23 @@ public partial class MainWindow : Window
 
         var mouseX = (int)CursorPosition.Value.X;
         var mouseY = (int)CursorPosition.Value.Y;
+        double px, py;
 
         var point1 = Coord.PixelToPoint(mouseX, mouseY);
-        var point2 = Transform(point1.X, point1.Y);
+        Transform(point1.X, point1.Y, out px, out py);
 
-        var pixel2 = Coord.PointToPixel(point2);
+        var pixel2 = Coord.PointToPixel(px, py);
 
-        Drawer.DrawLine(mouseX, mouseY, pixel2.X, pixel2.Y, System.Drawing.Color.White);
+        Drawer.DoDrawingOperation((d) =>
+        {
+            d.DrawLine(mouseX, mouseY, pixel2.X, pixel2.Y, System.Drawing.Color.Black, System.Drawing.Color.White);
+            d.DrawLine(mouseX, mouseY, pixel2.X, pixel2.Y, System.Drawing.Color.Black, System.Drawing.Color.White);
+            d.DrawLine(mouseX, mouseY, pixel2.X, pixel2.Y, System.Drawing.Color.Black, System.Drawing.Color.White);
+        });
+
+        // Drawer.DrawLine(,
+        //     DateTime.Now.Millisecond % 500 < 250 ? System.Drawing.Color.Black : System.Drawing.Color.White
+        // );
     }
 
     private GraphPoint getPoint(double x, double y)
@@ -265,9 +295,10 @@ public partial class MainWindow : Window
         bTextBlock.Text = ((int)point.b).ToString();
         aTextBlock.Text = ((int)point.a).ToString();
 
-        var point2 = Transform(x, y);
-        fxTextBlock.Text = point2.X.ToString("F4");
-        fyTextBlock.Text = point2.Y.ToString("F4");
+        double x2, y2;
+        Transform(x, y, out x2, out y2);
+        fxTextBlock.Text = x2.ToString("F4");
+        fyTextBlock.Text = y2.ToString("F4");
     }
 
     private void PauseButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -300,35 +331,35 @@ public partial class MainWindow : Window
         }
     }
 
-    private void drawDot(int px, int py, int size)
+    private void drawLine(int x1, int y1, int x2, int y2, int size)
     {
-        if (px < 0 || px > ImageWidth || py < 0 || py > ImageWidth)
+        if (x1 < 0 || x1 > ImageWidth || y1 < 0 || y1 > ImageWidth ||
+            x2 < 0 || x2 > ImageWidth || y2 < 0 || y2 > ImageWidth ||
+            size <= 0)
         {
             return;
         }
 
         System.Drawing.Color color = System.Drawing.Color.White;
 
-        Drawer.DoDrawingOperation(() => {
-            Drawer.SetPixelColor(px, py, color);
-            Drawer.SetPixelColor(px+1, py, color);
-            Drawer.SetPixelColor(px, py+1, color);
-            Drawer.SetPixelColor(px+1, py+1, color);
+        Drawer.DoDrawingOperation((ByteDrawer d) => {
+            d.DrawLine(x1, y1, x2, y2, color);
+            d.DrawLine(x1, y1+1, x2, y2+1, color);
         });
     }
 
     private void drawVectorField()
     {
-        double pixelWidth = Coord.GraphSize.X / Coord.ImageWidth;
-        Drawer.DrawEveryPixel((int x, int y) => {
+        double px, py, pixelWidth = Coord.GraphSize.X / Coord.ImageWidth;
+        Drawer.DrawEveryPixel((ByteDrawer d, int x, int y) => {
             var point1 = Coord.PixelToPoint(x, y);
 
-            var point2 = Transform(point1.X, point1.Y);
+            Transform(point1.X, point1.Y, out px, out py);
 
-            var p2 = getPoint(point2.X, point2.Y);
-
+            var point2 = new Point(px, py);
+            
             double dist = Avalonia.Point.Distance(point1, point2) / pixelWidth / 10.0;
-            Drawer.SetPixelColor(x, y, 255 * (dist - 1), 255 * dist /* (dist < 1 ? 1:0)*/, 255 * (1 - dist), 255);
+            d.SetPixelColor(x, y, 255 * (dist - 1), 255 * dist /* (dist < 1 ? 1:0)*/, 255 * (1 - dist), 255);
         });
     }
 
@@ -346,7 +377,17 @@ public partial class MainWindow : Window
         }
 
         var p = e.GetCurrentPoint(MainImage).Position;
-        drawDot((int)p.X, (int)p.Y, 2);
+
+        if (CursorPosition is null)
+        {
+            drawLine((int)p.X, (int)p.Y, (int)p.X+1, (int)p.Y, 2);
+        }
+        else
+        {
+            drawLine((int)CursorPosition?.X, (int)CursorPosition?.Y, (int)p.X+1, (int)p.Y, 2);
+        }
+
+        CursorPosition = p;
     }
 
     private void MainImage_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
@@ -357,7 +398,7 @@ public partial class MainWindow : Window
         }
 
         var p = e.GetCurrentPoint(MainImage).Position;
-        drawDot((int)p.X, (int)p.Y, 2);
+        drawLine((int)p.X, (int)p.Y, (int)p.X+1, (int)p.Y+1, 2);
     }
 
     private void MainImage_PointerExited(object? sender, PointerEventArgs e)
@@ -384,6 +425,7 @@ public partial class MainWindow : Window
             OverlayButton.IsEnabled = false;
 
             VectorButton.Content = "Live Iamge";
+            MainImage.Cursor = new Cursor(StandardCursorType.None);
         }
         else
         {
@@ -393,8 +435,8 @@ public partial class MainWindow : Window
             PauseButton.IsEnabled = true;
             OverlayButton.IsEnabled = true;
 
-            MainImage.Render();
             VectorButton.Content = "Vector Field";
+            MainImage.Cursor = new Cursor(StandardCursorType.Cross);
         }
 
         IsVectorFieldVisible = !IsVectorFieldVisible;
