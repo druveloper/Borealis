@@ -4,7 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:local="using:avaTest.Views"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="400"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="400"
         x:Class="avaTest.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Icon="/Assets/avalonia-logo.ico"
@@ -21,7 +21,7 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="50"></ColumnDefinition>
             <ColumnDefinition Width="*"></ColumnDefinition>
-            <ColumnDefinition Width="50"></ColumnDefinition>
+            <ColumnDefinition Width="300"></ColumnDefinition>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="50"></RowDefinition>
@@ -32,11 +32,36 @@
             <TextBlock Name="InfoTextBlock" Text=""></TextBlock>
         </StackPanel>
         <Border Grid.Column="1" Grid.Row="1" BorderBrush="Black" BorderThickness="2">
-            <local:LiveImage Name="MainImage" Width="400" Height="400" >
+            <local:LiveImage Name="MainImage" Width="400" Height="400" Click="MainImage_Click" PointerPressed="MainImage_PointerPressed" PointerMoved="MainImage_PointerMoved">
             </local:LiveImage>
         </Border>
+        <StackPanel Name="ControlStackPanel" Grid.Column="2" Grid.Row="1" Margin="20, 0">
+            <Button Name="PauseButton" Click="PauseButton_Click">Pause</Button>
+            <StackPanel Orientation="Horizontal" Margin="0, 10">
+                <TextBlock Text="x" VerticalAlignment="Center"></TextBlock>
+                <TextBox Name="xTextBox" Margin="10, 0" TextAlignment="Right" Width="70"></TextBox>
+                <TextBlock Text="y" VerticalAlignment="Center"></TextBlock>
+                <TextBox Name="yTextBox" Margin="10, 0" TextAlignment="Right" Width="70"></TextBox>
+                <Button Name="GetPixelButton" Click="GetPixelButton_Click">Get Pixel</Button>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0, 10">
+                <TextBlock Text="R" VerticalAlignment="Center" Padding="5,2" Foreground="white" Background="red"></TextBlock>
+                <TextBlock Name="rTextBlock" Margin="10, 0" TextAlignment="Right" Width="50"></TextBlock>
+                <TextBlock Text="G" VerticalAlignment="Center" Padding="5,2" Foreground="white" Background="green"></TextBlock>
+                <TextBlock Name="gTextBlock" Margin="10, 0" TextAlignment="Right" Width="50"></TextBlock>
+                <TextBlock Text="B" VerticalAlignment="Center" Padding="5,2" Foreground="white" Background="blue"></TextBlock>
+                <TextBlock Name="bTextBlock" Margin="10, 0" TextAlignment="Right" Width="50"></TextBlock>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0, 10">
+                <TextBlock Text="f(x,t) = " VerticalAlignment="Center"></TextBlock>
+                <TextBlock Name="fxTextBlock" Margin="10, 0" TextAlignment="Right" Width="50"></TextBlock>
+                <TextBlock Text="f(y,t) = " VerticalAlignment="Center"></TextBlock>
+                <TextBlock Name="fyTextBlock" Margin="10, 0" TextAlignment="Right" Width="50"></TextBlock>
+            </StackPanel>
+        </StackPanel>
         <StackPanel Orientation="Horizontal" Grid.Column="1" Grid.Row="2">
-            <TextBlock Name="TimeTextBlock" Text="Bye"></TextBlock>
+            <TextBlock Text="t = "></TextBlock>
+            <TextBlock Name="TimeTextBlock" Text="0"></TextBlock>
         </StackPanel>
     </Grid>
 </Window>

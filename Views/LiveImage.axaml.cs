@@ -4,12 +4,14 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using Avalonia.Threading;
 using Avalonia;
+using Avalonia.Interactivity;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.Input;
 
 namespace avaTest.Views;
 
@@ -21,10 +23,54 @@ public class LiveImage : TemplatedControl
     private IntPtr _outputBytes;
     public byte[]? _inputBytes = null;
 
+    // #region Events
+
+        // Click Event
+
+        // 1. Register the RoutedEvent identifier
+        public static readonly RoutedEvent<LiveImageClickArgs> ClickEvent =
+            RoutedEvent.Register<LiveImage, LiveImageClickArgs>(
+                nameof(Click), 
+                RoutingStrategies.Bubble
+            );
+
+        // 2. Expose a CLR event wrapper for convenience (and XAML compatibility)
+        public event EventHandler<LiveImageClickArgs> Click
+        {
+            add => AddHandler(ClickEvent, value);
+            remove => RemoveHandler(ClickEvent, value);
+        }
+
+        // 3. Provide a method to raise the event
+        protected virtual void OnClick(Point p, MouseButton button)
+        {
+            LiveImageClickArgs args = new LiveImageClickArgs(ClickEvent, (int)p.X, (int)p.Y, button);
+            RaiseEvent(args); // Dispatches the event into Avalonia's event system
+        }
+
+    // end Click Event
+
+    // #endregion // Events
 
     public LiveImage()
     {
         //InitializeComponent();
+    }
+
+    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    {
+        base.OnPointerReleased(e);
+        
+        // if (e.InitialPressMouseButton == MouseButton.Left)
+        // {
+            // Mark the event as handled if needed
+            e.Handled = true;
+            
+            var point = e.GetCurrentPoint(this).Position;
+
+            // Trigger your click logic or custom routed event here
+            OnClick(point, e.InitialPressMouseButton);
+        // }
     }
 
     public void LoadImage(int width = 400, int height = 400, byte[]? bytes = null)
