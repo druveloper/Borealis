@@ -28,10 +28,15 @@
             <RowDefinition Height="*"></RowDefinition>
             <RowDefinition Height="50"></RowDefinition>
         </Grid.RowDefinitions>
-        <TextBlock Name="TickTextBlock" Grid.Column="0" Grid.Row="0"></TextBlock>
+        <StackPanel Orientation="Horizontal" Grid.Column="1" Grid.Row="0">
+            <TextBlock Name="InfoTextBlock" Text=""></TextBlock>
+        </StackPanel>
         <Border Grid.Column="1" Grid.Row="1" BorderBrush="Black" BorderThickness="2">
-            <local:MyImage Name="MainImage" Width="400" Height="400" >
-            </local:MyImage>
+            <local:LiveImage Name="MainImage" Width="400" Height="400" >
+            </local:LiveImage>
         </Border>
+        <StackPanel Orientation="Horizontal" Grid.Column="1" Grid.Row="2">
+            <TextBlock Name="TimeTextBlock" Text="Bye"></TextBlock>
+        </StackPanel>
     </Grid>
 </Window>

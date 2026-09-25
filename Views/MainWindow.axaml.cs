@@ -7,6 +7,7 @@ using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using Tmds.DBus.Protocol;
 
 namespace avaTest.Views;
 
@@ -15,10 +16,33 @@ public partial class MainWindow : Window
     public byte[]? Bytes = null;
     private DateTime StartTime = DateTime.Now;
     private Avalonia.Threading.DispatcherTimer? Timer = null;
+    private System.Threading.Timer? Timer2 = null;
 
     public MainWindow()
     {
         InitializeComponent();
+
+        InitializeBitmap();
+
+        MainImage.LoadImage(400, 400, Bytes);
+
+        if (Design.IsDesignMode)
+        {
+            return;
+        }
+
+        Timer2 = new Timer((n => {
+            int t = (int)((DateTime.Now - StartTime).TotalMilliseconds);
+            Dispatcher.UIThread.Invoke(() => TimeTextBlock.Text = t.ToString());
+            TimerCallback(t);
+            MainImage.Render();
+            // Dispatcher.UIThread.Invoke(() => MainImage.Render());
+        }), null, 800, 80);
+
+        // Timer = new Avalonia.Threading.DispatcherTimer();
+        // Timer.Interval = TimeSpan.FromMilliseconds(800);
+        // Timer.Tick += TimerCallback;
+        //Timer.Start();
     }
 
     private void InitializeBitmap()
@@ -42,68 +66,23 @@ public partial class MainWindow : Window
         return;
     }
 
-    private void TimerCallback(object? state, EventArgs e)
+    private void TimerCallback(int t) //object? state) //, EventArgs? e = null)
     {
-        int t = (int)((DateTime.Now - StartTime).TotalMilliseconds);
-        TickTextBlock.Text = t.ToString();
-
         if (Bytes == null) return;
 
         byte[] bytes = Bytes;
 
-        for (long y = 0; y < 400; y++)
-        {
-            for (long x = 0; x < 400; x++)
-            {
-                long n = 4 * (400 * y + x);
+        // for (long y = 0; y < 400; y++)
+        // {
+        //     for (long x = 0; x < 400; x++)
+        //     {
+        //         long n = 4 * (400 * y + x);
 
-                bytes[n + 0] = (byte)((x + t) % 256);
-                bytes[n + 1] = (byte)((y + t) % 256);
-                bytes[n + 2] = (byte)((x + y + t) % 256);
-                bytes[n + 3] = 255;
-            }
-        }
-        
-        MainImage.Render();
-    }
-
-    // private void Window_Closed(object? sender, EventArgs e)
-    // {
-        
-    // }
-
-    protected override void OnOpened(EventArgs e)
-    {
-        base.OnOpened(e);
-
-        // MainBitmap = new WriteableBitmap(
-        //     new Avalonia.PixelSize(400, 400),
-        //     new Avalonia.Vector(300, 300),
-        //     PixelFormat.Bgra8888, AlphaFormat.Opaque);
-
-        InitializeBitmap();
-
-        if (Bytes == null)
-        {
-            return;
-        }
-
-        MainImage = new MyImage(400, 400, Bytes);
-
-        Timer = new Avalonia.Threading.DispatcherTimer();
-        Timer.Interval = TimeSpan.FromMilliseconds(800);
-        Timer.Tick += TimerCallback;
-        //Timer.Start();
-    }
-
-    protected override void OnClosing(WindowClosingEventArgs e)
-    {
-        if (Timer != null)
-        {
-            Timer.Stop();
-            Timer = null;
-        }
-
-        base.OnClosing(e);
+        //         bytes[n + 0] = (byte)((x + t) % 256);
+        //         bytes[n + 1] = (byte)((y + t) % 256);
+        //         bytes[n + 2] = (byte)((x + y + t) % 256);
+        //         bytes[n + 3] = 255;
+        //     }
+        // }
     }
 }
