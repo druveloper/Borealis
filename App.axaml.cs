@@ -1,10 +1,10 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using avaTest.ViewModels;
-using avaTest.Views;
+using Borealis.ViewModels;
+using Borealis.Views;
 
-namespace avaTest;
+namespace Borealis;
 
 public partial class App : Application
 {

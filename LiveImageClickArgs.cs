@@ -3,7 +3,7 @@ using Avalonia;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 
-namespace avaTest;
+namespace Borealis;
 
 public class LiveImageClickArgs : RoutedEventArgs
 {

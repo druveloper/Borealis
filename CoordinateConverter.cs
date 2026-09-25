@@ -5,7 +5,7 @@ using System.Threading.Channels;
 using Avalonia;
 using Avalonia.Controls;
 
-namespace avaTest;
+namespace Borealis;
 
 public class CoordinateConverter
 {

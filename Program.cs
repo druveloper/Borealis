@@ -1,7 +1,7 @@
 ﻿using Avalonia;
 using System;
 
-namespace avaTest;
+namespace Borealis;
 
 sealed class Program
 {

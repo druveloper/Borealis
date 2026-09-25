@@ -14,7 +14,7 @@ using Avalonia.Platform;
 using Avalonia.Input;
 using System.Threading;
 
-namespace avaTest.Views;
+namespace Borealis.Views;
 
 public class LiveImage : TemplatedControl
 {

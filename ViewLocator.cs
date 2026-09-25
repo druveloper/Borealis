@@ -2,9 +2,9 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
-using avaTest.ViewModels;
+using Borealis.ViewModels;
 
-namespace avaTest;
+namespace Borealis;
 
 /// <summary>
 /// Given a view model, returns the corresponding view if possible.

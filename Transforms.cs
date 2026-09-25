@@ -2,7 +2,7 @@ using System;
 using Avalonia;
 using Avalonia.Platform;
 
-namespace avaTest;
+namespace Borealis;
 
 public class Transforms
 {

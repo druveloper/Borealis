@@ -3,7 +3,7 @@ using System.Drawing;
 using Avalonia;
 using Avalonia.Input;
 
-namespace avaTest;
+namespace Borealis;
 
 public class GraphPoint
 {

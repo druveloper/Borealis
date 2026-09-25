@@ -16,10 +16,10 @@ using Avalonia.OpenGL;
 using Avalonia.Platform;
 using Avalonia.Styling;
 using Avalonia.Threading;
-using avaTest.ViewModels;
+using Borealis.ViewModels;
 using Tmds.DBus.Protocol;
 
-namespace avaTest.Views;
+namespace Borealis.Views;
 
 public partial class MainWindow : Window
 {
@@ -320,7 +320,7 @@ public partial class MainWindow : Window
 
     }
 
-    private void MainImage_Click(object? sender, avaTest.LiveImageClickArgs e)
+    private void MainImage_Click(object? sender, Borealis.LiveImageClickArgs e)
     {
         if (e.MouseButton == Avalonia.Input.MouseButton.Right)
         {

@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace avaTest.ViewModels;
+namespace Borealis.ViewModels;
 
 public partial class MainViewModel : ViewModelBase
 {

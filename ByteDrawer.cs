@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls.Platform;
 
-namespace avaTest;
+namespace Borealis;
 
 /// <summary>
 /// Draws points and lines in a 1-dimensional array of bytes meant for an image
