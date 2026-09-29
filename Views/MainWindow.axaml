@@ -4,7 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:local="using:Borealis.Views"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+        mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="600"
         x:Class="Borealis.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Icon="/Assets/avalonia-logo.ico"
@@ -30,13 +30,17 @@
         </Grid.RowDefinitions>
         <StackPanel Grid.Column="1" Grid.Row="0" ClipToBounds="true">
             <StackPanel Orientation="Horizontal" Margin="0, 5">
-                <Button Name="PauseButton" Margin="0, 0, 5, 0" Click="PauseButton_Click">Pause</Button>
-                <TextBlock Text="Timer Speed" VerticalAlignment="Center"></TextBlock>
-                <Slider Name="TimerSpeedSlider" Width="100" Margin="10, 0" Minimum="0" Maximum="1000" Value="{Binding TimerSpeed}"></Slider>
-                <TextBlock Text="{Binding TimerSpeed, StringFormat='{}{0}'}" VerticalAlignment="Center"></TextBlock>
+                <Button Name="PauseButton" Margin="0, 0, 5, 0" Width="60" HorizontalContentAlignment="Center" Click="PauseButton_Click">
+                    Play
+                </Button>
+                <TextBlock Text="Timer Speed" Margin="10, 0" VerticalAlignment="Center"></TextBlock>
+                <Slider Name="TimerSpeedSlider" Width="100" Minimum="0" Maximum="1000" Value="{Binding TimerSpeed}"></Slider>
+                <TextBlock Text="{Binding TimerSpeed, StringFormat='{}{0}'}" Margin="5, 0" VerticalAlignment="Center"></TextBlock>
+                <TextBlock Text="Transform" Margin="10, 0, 5, 0" VerticalAlignment="Center"></TextBlock>
+                <ComboBox Name="TransformDropDown" VerticalAlignment="Center" Width="150" SelectionChanged="TransformDropDown_SelectionChanged"></ComboBox>
             </StackPanel>
             <StackPanel Orientation="Horizontal" Margin="0, 5">
-                <TextBlock Name="InfoTextBlock" Text="">Info Text</TextBlock>
+                <TextBlock Name="InfoTextBlock" Text="">Choose a transform from the dropdown menu.</TextBlock>
             </StackPanel>
         </StackPanel>
         <Border Grid.Column="1" Grid.Row="1" BorderBrush="Black" BorderThickness="2">

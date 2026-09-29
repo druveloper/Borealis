@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
 using System.Linq;
 using System.Numerics;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -29,11 +31,15 @@ public partial class MainWindow : Window
     private byte[]? Bytes = null;
     private ByteDrawer Drawer;
     private delegate void PointTransform(double x, double y, out double xout, out double yout);
-    private PointTransform Transform = Transforms.Shrink;
+    private PointTransform Transform = Transforms.Inward;
     private DateTime StartTime = DateTime.Now;
     private DateTime LastTimerRun = DateTime.Now;
     private System.Threading.Timer? Timer = null;
-    private bool IsTimerStopped = false;
+    private bool IsTimerStopped
+    {
+        get { return ViewModel.IsTimerStopped; }
+        set { ViewModel.IsTimerStopped = value; }
+    }
     private double T = 0;
     private CoordinateConverter Coord = new CoordinateConverter(400, 400, new Point(2, 2), new Point(0, 0));
     private Point[] Moons = [new Point(-0.170, 0.281), new Point(0.58, 0.66), new Point(0.338, 0.61)];
@@ -47,6 +53,21 @@ public partial class MainWindow : Window
 
         ViewModel = new MainViewModel();
         DataContext = ViewModel;
+
+        ViewModel.PropertyChanged += ((object sender, PropertyChangedEventArgs e) =>
+        {
+            if (e.PropertyName == "IsTimerStopped")
+            {
+                if (IsTimerStopped)
+                {
+                    PauseButton.Content = "Play";
+                }
+                else
+                {
+                    PauseButton.Content = "Pause";
+                }
+            }
+        });
 
         // Bytes = new byte[ImageWidth * ImageHeight * 4];
         Drawer = new ByteDrawer(ImageWidth, ImageHeight, ByteDrawer.Format.BGRA);
@@ -64,13 +85,19 @@ public partial class MainWindow : Window
             return;
         }
 
-        // MainImage.Render();
+        // initialize Transform menu
 
-        //Timer = new Timer((n =>
-        (new Task(() =>
+        TransformDropDown.ItemsSource = typeof(Borealis.Transforms).GetMethods().Where((m) => m.IsStatic && m.IsPublic).Select((m) => m.Name);
+
+        // start "timer"
+
+        (new Task(backgroundTask)).Start();
+    }
+
+    private void backgroundTask()
+    {
+        while (true)
         {
-            while(true)
-            {
             // check TimerSpeed
             int timerSpeed = 0;
             Dispatcher.Invoke(() =>
@@ -120,10 +147,7 @@ public partial class MainWindow : Window
             // Dispatcher.UIThread.Invoke(() => MainImage.Render());
 
             Thread.Sleep(1000 / 32);
-            }
-
-        //}), null, 800, 1000 / 10);
-        })).Start();
+        }
     }
 
     private double simulatedElapsedTime()
@@ -138,14 +162,16 @@ public partial class MainWindow : Window
 
     private void clearBitmap()
     {
-        Drawer.DrawEveryPixel((ByteDrawer d, int x, int y) => {
+        Drawer.DrawEveryPixel((ByteDrawer d, int x, int y) =>
+        {
             d.SetPixelColor(x, y, 0, 0, 0);
         });
     }
 
     private void overlayBitmap(Point[] moons, double t)
     {
-        Drawer.DoDrawingOperation((ByteDrawer d) => {
+        Drawer.DoDrawingOperation((ByteDrawer d) =>
+        {
             drawMoon(d, moons[0], Color.FromRgb(255, 0, 0));
             drawMoon(d, moons[1], Color.FromRgb(0, 255, 0));
             drawMoon(d, moons[2], Color.FromRgb(0, 0, 255));
@@ -158,16 +184,17 @@ public partial class MainWindow : Window
     {
         Point point;
         double x, y, dist;
-        din.DrawEveryPixel((ByteDrawer d, int ix, int iy) => {
+        din.DrawEveryPixel((ByteDrawer d, int ix, int iy) =>
+        {
             point = Coord.PixelToPoint(ix, iy);
             x = point.X;
             y = point.Y;
             dist = Math.Max(0, Math.Min(0.50, Math.Abs(x - moon.X) + Math.Abs(y - moon.Y)));
 
             d.OverlayPixel(ix, iy,
-                color.R * (1 - Math.Pow(dist / 0.50, 1)),
-                color.G * (1 - Math.Pow(dist / 0.50, 1)),
-                color.B * (1 - Math.Pow(dist / 0.50, 1))
+                color.R * (1 - Math.Pow(dist / 0.50, .5)),
+                color.G * (1 - Math.Pow(dist / 0.50, .5)),
+                color.B * (1 - Math.Pow(dist / 0.50, .5))
             );
         });
     }
@@ -181,10 +208,11 @@ public partial class MainWindow : Window
         // double n = t % 2000;
         // double k = Math.PI / 200.0;
         double xt, yt;
-        Drawer.DrawEveryPixel((ByteDrawer d, int x, int y) => {
+        Drawer.DrawEveryPixel((ByteDrawer d, int x, int y) =>
+        {
             var point1 = Coord.PixelToPoint(x, y);
 
-            
+
             Transform(point1.X, point1.Y, out xt, out yt);
 
             var p2 = getPoint(xt, yt);
@@ -244,14 +272,14 @@ public partial class MainWindow : Window
     private GraphPoint getPoint(double x, double y)
     {
         var p = Coord.PointToPixel(x, y);
-        
+
         return new GraphPoint(new Point(x, y), Drawer.GetPixelColor(p.X, p.Y));
     }
 
     private void setPoint(double x, double y, double r, double g, double b, double a = 255)
     {
         var p = Coord.PointToPixel(x, y);
-        
+
         Drawer.SetPixelColor(p.X, p.Y, r, g, b, a);
     }
 
@@ -310,8 +338,8 @@ public partial class MainWindow : Window
         }
         else
         {
-            IsTimerStopped = true;
             T += simulatedElapsedTime();
+            IsTimerStopped = true;
         }
     }
 
@@ -342,22 +370,24 @@ public partial class MainWindow : Window
 
         System.Drawing.Color color = System.Drawing.Color.White;
 
-        Drawer.DoDrawingOperation((ByteDrawer d) => {
+        Drawer.DoDrawingOperation((ByteDrawer d) =>
+        {
             d.DrawLine(x1, y1, x2, y2, color);
-            d.DrawLine(x1, y1+1, x2, y2+1, color);
+            d.DrawLine(x1, y1 + 1, x2, y2 + 1, color);
         });
     }
 
     private void drawVectorField()
     {
         double px, py, pixelWidth = Coord.GraphSize.X / Coord.ImageWidth;
-        Drawer.DrawEveryPixel((ByteDrawer d, int x, int y) => {
+        Drawer.DrawEveryPixel((ByteDrawer d, int x, int y) =>
+        {
             var point1 = Coord.PixelToPoint(x, y);
 
             Transform(point1.X, point1.Y, out px, out py);
 
             var point2 = new Point(px, py);
-            
+
             double dist = Avalonia.Point.Distance(point1, point2) / pixelWidth / 10.0;
             d.SetPixelColor(x, y, 255 * (dist - 1), 255 * dist /* (dist < 1 ? 1:0)*/, 255 * (1 - dist), 255);
         });
@@ -380,11 +410,11 @@ public partial class MainWindow : Window
 
         if (CursorPosition is null)
         {
-            drawLine((int)p.X, (int)p.Y, (int)p.X+1, (int)p.Y, 2);
+            drawLine((int)p.X, (int)p.Y, (int)p.X + 1, (int)p.Y, 2);
         }
         else
         {
-            drawLine((int)CursorPosition?.X, (int)CursorPosition?.Y, (int)p.X+1, (int)p.Y, 2);
+            drawLine((int)CursorPosition?.X, (int)CursorPosition?.Y, (int)p.X + 1, (int)p.Y, 2);
         }
 
         CursorPosition = p;
@@ -398,7 +428,7 @@ public partial class MainWindow : Window
         }
 
         var p = e.GetCurrentPoint(MainImage).Position;
-        drawLine((int)p.X, (int)p.Y, (int)p.X+1, (int)p.Y+1, 2);
+        drawLine((int)p.X, (int)p.Y, (int)p.X + 1, (int)p.Y + 1, 2);
     }
 
     private void MainImage_PointerExited(object? sender, PointerEventArgs e)
@@ -440,5 +470,12 @@ public partial class MainWindow : Window
         }
 
         IsVectorFieldVisible = !IsVectorFieldVisible;
+    }
+
+    private void TransformDropDown_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        string transformName = ((ComboBox)sender).SelectedItem?.ToString() ?? "";
+
+        Transform = typeof(Borealis.Transforms).GetMethod(transformName)?.CreateDelegate<PointTransform>() ?? Transforms.None;
     }
 }

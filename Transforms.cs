@@ -6,22 +6,52 @@ namespace Borealis;
 
 public class Transforms
 {
-    public static void Identity(double x, double y, out double xout, out double yout)
+    public static void None(double x, double y, out double xout, out double yout)
     {
         xout = x;
         yout = y;
     }
 
-    public static void FlowUp(double x, double y, out double xout, out double yout)
+    public static void Circular(double x, double y, out double xout, out double yout)
     {
-        xout = x;
-        yout = y - 0.01;
+        xout = Math.Sqrt(x * x + y * y) * Math.Cos(Math.Atan2(y, x) + .05);
+        yout = Math.Sqrt(x * x + y * y) * Math.Sin(Math.Atan2(y, x) + .05);
     }
 
-    public static void Shrink(double x, double y, out double xout, out double yout)
+    public static void Fall(double x, double y, out double xout, out double yout)
     {
-        xout = x * 1.05;
-        yout = y * 1.05;
+        xout = x;
+        yout = y + 0.05;
+    }
+
+    public static void FlowLeft(double x, double y, out double xout, out double yout)
+    {
+        xout = x + 0.05;
+        yout = y;
+    }
+
+    public static void FlowRight(double x, double y, out double xout, out double yout)
+    {
+        xout = x - 0.05;
+        yout = y;
+    }
+
+    public static void Inward(double x, double y, out double xout, out double yout)
+    {
+        xout = x * 1.1;
+        yout = y * 1.1;
+    }
+
+    public static void Outward(double x, double y, out double xout, out double yout)
+    {
+        xout = x * 0.90;
+        yout = y * 0.90;
+    }
+
+    public static void Rise(double x, double y, out double xout, out double yout)
+    {
+        xout = x;
+        yout = y - 0.05;
     }
 
     public static void Swirls(double x, double y, out double xout, out double yout)
