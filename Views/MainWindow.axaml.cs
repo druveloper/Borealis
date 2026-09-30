@@ -70,7 +70,7 @@ public partial class MainWindow : Window
         });
 
         // Bytes = new byte[ImageWidth * ImageHeight * 4];
-        Drawer = new ByteDrawer(ImageWidth, ImageHeight, ByteDrawer.Format.BGRA);
+        Drawer = new ByteDrawer(ImageWidth, ImageHeight, ByteDrawer.Format.RGBA);
         Drawer.BackgroundColor = System.Drawing.Color.Black;
         Bytes = Drawer.Bytes;
 
@@ -92,6 +92,10 @@ public partial class MainWindow : Window
         // start "timer"
 
         (new Task(backgroundTask)).Start();
+
+
+        // Drawer.DrawOverlay(-1, 1, System.Drawing.Color.Red);
+        // MainImage.Render();
     }
 
     private void backgroundTask()
@@ -182,21 +186,22 @@ public partial class MainWindow : Window
 
     private void drawMoon(ByteDrawer din, Point moon, Color color)
     {
-        Point point;
-        double x, y, dist;
-        din.DrawEveryPixel((ByteDrawer d, int ix, int iy) =>
-        {
-            point = Coord.PixelToPoint(ix, iy);
-            x = point.X;
-            y = point.Y;
-            dist = Math.Max(0, Math.Min(0.50, Math.Abs(x - moon.X) + Math.Abs(y - moon.Y)));
+        din.DrawOverlay(moon.X, moon.Y, System.Drawing.Color.FromArgb(255, color.R, color.G, color.B));
+        // Point point;
+        // double x, y, dist;
+        // din.DrawEveryPixel((ByteDrawer d, int ix, int iy) =>
+        // {
+        //     point = Coord.PixelToPoint(ix, iy);
+        //     x = point.X;
+        //     y = point.Y;
+        //     dist = Math.Max(0, Math.Min(0.50, Math.Abs(x - moon.X) + Math.Abs(y - moon.Y)));
 
-            d.OverlayPixel(ix, iy,
-                color.R * (1 - Math.Pow(dist / 0.50, .5)),
-                color.G * (1 - Math.Pow(dist / 0.50, .5)),
-                color.B * (1 - Math.Pow(dist / 0.50, .5))
-            );
-        });
+        //     d.OverlayPixel(ix, iy,
+        //         color.R * (1 - Math.Pow(dist / 0.50, .5)),
+        //         color.G * (1 - Math.Pow(dist / 0.50, .5)),
+        //         color.B * (1 - Math.Pow(dist / 0.50, .5))
+        //     );
+        // });
     }
 
     private void timerCallback(double t) //object? state) //, EventArgs? e = null)
@@ -207,29 +212,30 @@ public partial class MainWindow : Window
 
         // double n = t % 2000;
         // double k = Math.PI / 200.0;
-        double xt, yt;
-        Drawer.DrawEveryPixel((ByteDrawer d, int x, int y) =>
-        {
-            var point1 = Coord.PixelToPoint(x, y);
 
 
-            Transform(point1.X, point1.Y, out xt, out yt);
+        Drawer.DrawTransform();
 
-            var p2 = getPoint(xt, yt);
+        // double xt, yt;
+        // Drawer.DrawEveryPixel((ByteDrawer d, int x, int y) =>
+        // {
+        //     var point1 = Coord.PixelToPoint(x, y);
 
-            d.SetPixelColor(x, y, p2.r - 5, p2.g - 5, p2.b - 5, 255);
 
-            //setPoint(point1.X, point1.Y, p2.r - 10, p2.g - 10, p2.b - 10, 255);
-        });
+        //     Transform(point1.X, point1.Y, out xt, out yt);
 
-        // MainImage.Render();
-        // Thread.Sleep(80 * 15);
+        //     var p2 = getPoint(xt, yt);
+
+        //     d.SetPixelColor(x, y, p2.r - 5, p2.g - 5, p2.b - 5, 255);
+
+        //     //setPoint(point1.X, point1.Y, p2.r - 10, p2.g - 10, p2.b - 10, 255);
+        // });
 
         // redraw new bitmap
 
-        Moons[0] = rotatePoint(Moons[0], .15);
-        Moons[1] = rotatePoint(Moons[1], .10);
-        Moons[2] = rotatePoint(Moons[2], .05);
+        Moons[0] = rotatePoint(Moons[0], .05);
+        Moons[1] = rotatePoint(Moons[1], .0333);
+        Moons[2] = rotatePoint(Moons[2], .0166);
 
         overlayBitmap(Moons, 0);
     }

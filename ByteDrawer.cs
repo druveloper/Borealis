@@ -1,6 +1,7 @@
 using System;
 using System.Data.SqlTypes;
 using System.Drawing;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -32,6 +33,7 @@ public class ByteDrawer
     private int _A = 3;
     private delegate byte getAlphaDelegate(long i);
     private getAlphaDelegate _GetAlpha;
+    private MetalGpuDrawer _GpuDrawer;
     
     public enum Format
     {
@@ -85,6 +87,22 @@ public class ByteDrawer
         _MainBytes = new byte[BytesPerPixel * (Width * Height)];
         _AuxiliaryBytes = new byte[_MainBytes.Length];
         _BytePointer = _MainBytes;
+
+        _GpuDrawer = new MetalGpuDrawer(_MainBytes, width, height);
+    }
+
+    public void DrawOverlay(double moonX, double moonY, Color color)
+    {
+        _GpuDrawer.DrawOverlay(new MetalGpuShader.Moon()
+        {
+            Position = new Vector2() {X = (float)moonX, Y = (float)moonY},
+            Color = color
+        });
+    }
+
+    public void DrawTransform()
+    {
+        _GpuDrawer.DrawTransform();
     }
 
     /// <summary>

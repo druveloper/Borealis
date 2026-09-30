@@ -82,7 +82,7 @@ public class LiveImage : TemplatedControl
         _image = new WriteableBitmap(
             new PixelSize(width, height),
             new Vector(96, 96),
-            PixelFormat.Bgra8888,
+            PixelFormat.Rgba8888,
             AlphaFormat.Premul
         );
 
