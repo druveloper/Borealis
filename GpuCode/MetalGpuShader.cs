@@ -1,16 +1,15 @@
 using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Drawing;
+using System.Numerics;
+using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
-using SharpMetal.Metal;
-using SharpMetal.Foundation;
+using System.Threading;
 using SharpMetal;
-using System.Collections.Generic;
-using Avalonia.Media.Imaging;
-using System.Numerics;
-using Avalonia.Automation.Peers;
-using System.Drawing;
-using System.Reflection.Metadata;
-using System.ComponentModel;
+using SharpMetal.Foundation;
+using SharpMetal.Metal;
 
 namespace Borealis;
 
@@ -88,6 +87,9 @@ namespace Borealis;
 
         public void Draw(Moon? moon = null)
         {
+            lock(_Drawer)
+            {
+
             Marshal.Copy(_Drawer.Host_BitmapData, 0, _Drawer.Dev_InputBuffer.Contents, _Drawer.Host_BitmapData.Length);
             if (moon is not null)
             {
@@ -104,7 +106,6 @@ namespace Borealis;
             // 6. Encode and Dispatch the Compute Commands
             var commandBuffer = _Drawer.CommandQueue.CommandBuffer();
             var computeEncoder = commandBuffer.ComputeCommandEncoder();
-
             computeEncoder.SetComputePipelineState(_Dev_PipelineState);
             computeEncoder.SetBuffer(_Drawer.Dev_InputBuffer, 0, 0);
             computeEncoder.SetBuffer(_Drawer.Dev_OutputBuffer, 0, 1);
@@ -144,5 +145,7 @@ namespace Borealis;
 
             computeEncoder.Dispose();
             commandBuffer.Dispose();
+
+            } // end lock
         }
     }

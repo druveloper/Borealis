@@ -1,11 +1,13 @@
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
-using SharpMetal.Metal;
-using SharpMetal.Foundation;
+using System.Threading;
+using System.Threading.Tasks;
 using SharpMetal;
-using System.Collections.Generic;
-using Avalonia.Media.Imaging;
+using SharpMetal.Foundation;
+using SharpMetal.Metal;
 
 namespace Borealis;
 
@@ -24,6 +26,7 @@ public class MetalGpuDrawer
     private int _Width, _Height;
     private MetalGpuShader _OverlayShader;
     private MetalGpuShader _TransformShader;
+    private BlockingCollection<Task> _ShaderTasks = new BlockingCollection<Task>();
 
     
     public MetalGpuDrawer(byte[] bitmapData, int width, int height)
@@ -47,6 +50,9 @@ public class MetalGpuDrawer
             // set Shaders
             _OverlayShader = new MetalGpuShader(this, "Overlay.metal", true);
             _TransformShader = new MetalGpuShader(this, "Transform.metal");
+
+            // start shader task queue
+            (new Task(shaderTaskQueue)).Start();
         }
         finally
         {
@@ -65,14 +71,26 @@ public class MetalGpuDrawer
         Device.Dispose();
     }
 
+    private void shaderTaskQueue()
+    {
+        foreach(Task shaderTask in _ShaderTasks.GetConsumingEnumerable())
+        {
+            shaderTask.RunSynchronously();
+        }
+    }
+
     public void DrawOverlay(MetalGpuShader.Moon? moon = null)
     {
-        _OverlayShader.Draw(moon);
+        _ShaderTasks.Add(new Task(() => {
+            _OverlayShader.Draw(moon);
+        }));
     }
     
     public void DrawTransform() //(WriteableBitmap bitmap)
     {
-        _TransformShader.Draw();
+        _ShaderTasks.Add(new Task(() => {
+            _TransformShader.Draw();
+        }));
     }
 }
 
