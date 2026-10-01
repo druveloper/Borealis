@@ -1,25 +1,15 @@
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Linq;
-using System.Numerics;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
-using Avalonia.Media.Imaging;
-using Avalonia.OpenGL;
-using Avalonia.Platform;
-using Avalonia.Styling;
 using Avalonia.Threading;
 using Borealis.ViewModels;
-using Tmds.DBus.Protocol;
 
 namespace Borealis.Views;
 
@@ -32,9 +22,7 @@ public partial class MainWindow : Window
     private ByteDrawer Drawer;
     private delegate void PointTransform(double x, double y, out double xout, out double yout);
     private PointTransform Transform = Transforms.Inward;
-    private DateTime StartTime = DateTime.Now;
     private DateTime LastTimerRun = DateTime.Now;
-    private System.Threading.Timer? Timer = null;
     private bool IsTimerStopped
     {
         get { return ViewModel.IsTimerStopped; }
@@ -108,21 +96,12 @@ public partial class MainWindow : Window
             {
                 timerSpeed = (int)TimerSpeedSlider.Value;
             });
-            if (timerSpeed < 1000)
-            {
-                if ((DateTime.Now - LastTimerRun).TotalMilliseconds < 2100 - 2 * timerSpeed)
-                {
-                    return;
-                }
-
-                LastTimerRun = DateTime.Now;
-            }
 
 
             double t = 0;
             if (!IsTimerStopped)
             {
-                t = T + simulatedElapsedTime();
+                t = simulatedElapsedTime(timerSpeed);
             }
             else
             {
@@ -141,22 +120,31 @@ public partial class MainWindow : Window
                 {
                     showInfo(e.Message);
                 }
+
+                MainImage.Render();
+                Thread.Sleep(timerSpeedMultiplier(timerSpeed) * 1000 / 32);
             }
             else if (IsVectorFieldVisible)
             {
                 vectorFieldCallback(t);
+                MainImage.Render();
+                Thread.Sleep(1000 / 32);
             }
-
-            MainImage.Render();
-            // Dispatcher.UIThread.Invoke(() => MainImage.Render());
-
-            Thread.Sleep(1000 / 32);
         }
     }
 
-    private double simulatedElapsedTime()
+    private int timerSpeedMultiplier(int timerSpeed)
     {
-        return (DateTime.Now - StartTime).TotalMilliseconds * 100 / (2100 - 2 * ViewModel.TimerSpeed) / 1000.0;
+        return (1000 - timerSpeed) * 63 / 1000 + 1;
+    }
+
+    private double simulatedElapsedTime(int timerSpeed)
+    {
+        DateTime now = DateTime.Now;
+        double diff = (now - LastTimerRun).TotalMilliseconds / timerSpeedMultiplier(timerSpeed) / 1000.0;
+        T += diff;
+        LastTimerRun = now;
+        return T;
     }
 
     private void showInfo(string info)
@@ -187,21 +175,6 @@ public partial class MainWindow : Window
     private void drawMoon(ByteDrawer din, Point moon, Color color)
     {
         din.DrawOverlay(moon.X, moon.Y, System.Drawing.Color.FromArgb(255, color.R, color.G, color.B));
-        // Point point;
-        // double x, y, dist;
-        // din.DrawEveryPixel((ByteDrawer d, int ix, int iy) =>
-        // {
-        //     point = Coord.PixelToPoint(ix, iy);
-        //     x = point.X;
-        //     y = point.Y;
-        //     dist = Math.Max(0, Math.Min(0.50, Math.Abs(x - moon.X) + Math.Abs(y - moon.Y)));
-
-        //     d.OverlayPixel(ix, iy,
-        //         color.R * (1 - Math.Pow(dist / 0.50, .5)),
-        //         color.G * (1 - Math.Pow(dist / 0.50, .5)),
-        //         color.B * (1 - Math.Pow(dist / 0.50, .5))
-        //     );
-        // });
     }
 
     private void timerCallback(double t) //object? state) //, EventArgs? e = null)
@@ -216,20 +189,6 @@ public partial class MainWindow : Window
 
         Drawer.DrawTransform();
 
-        // double xt, yt;
-        // Drawer.DrawEveryPixel((ByteDrawer d, int x, int y) =>
-        // {
-        //     var point1 = Coord.PixelToPoint(x, y);
-
-
-        //     Transform(point1.X, point1.Y, out xt, out yt);
-
-        //     var p2 = getPoint(xt, yt);
-
-        //     d.SetPixelColor(x, y, p2.r - 5, p2.g - 5, p2.b - 5, 255);
-
-        //     //setPoint(point1.X, point1.Y, p2.r - 10, p2.g - 10, p2.b - 10, 255);
-        // });
 
         // redraw new bitmap
 
@@ -263,16 +222,7 @@ public partial class MainWindow : Window
 
         var pixel2 = Coord.PointToPixel(px, py);
 
-        Drawer.DoDrawingOperation((d) =>
-        {
-            d.DrawLine(mouseX, mouseY, pixel2.X, pixel2.Y, System.Drawing.Color.Black, System.Drawing.Color.White);
-            d.DrawLine(mouseX, mouseY, pixel2.X, pixel2.Y, System.Drawing.Color.Black, System.Drawing.Color.White);
-            d.DrawLine(mouseX, mouseY, pixel2.X, pixel2.Y, System.Drawing.Color.Black, System.Drawing.Color.White);
-        });
-
-        // Drawer.DrawLine(,
-        //     DateTime.Now.Millisecond % 500 < 250 ? System.Drawing.Color.Black : System.Drawing.Color.White
-        // );
+        Drawer.DrawLine(mouseX, mouseY, pixel2.X, pixel2.Y, System.Drawing.Color.Black, System.Drawing.Color.White);
     }
 
     private GraphPoint getPoint(double x, double y)
@@ -339,12 +289,11 @@ public partial class MainWindow : Window
     {
         if (IsTimerStopped)
         {
-            StartTime = DateTime.Now;
+            LastTimerRun = DateTime.Now;
             IsTimerStopped = false;
         }
         else
         {
-            T += simulatedElapsedTime();
             IsTimerStopped = true;
         }
     }
