@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Threading;
 using System.Threading.Tasks;
+using Borealis.GpuCode;
 using SharpMetal;
 using SharpMetal.Foundation;
 using SharpMetal.Metal;
@@ -13,23 +14,20 @@ namespace Borealis;
 
 // The library uses the SupportedOSPlatform attribute to stay true to macOS targets
 [SupportedOSPlatform("macos")] 
-public class MetalGpuDrawer
+public class MetalGpuDrawer : GpuDrawer
 {
-    public int Width { get {return _Width;} }
-    public int Height { get {return _Height;} }
-    public byte[] Host_BitmapData;
     public MTLDevice Device = MTLDevice.CreateSystemDefaultDevice();
     public MTLCommandQueue CommandQueue;
     public MTLBuffer Dev_InputBuffer;
     public MTLBuffer Dev_OutputBuffer;
 
-    private int _Width, _Height;
     private MetalGpuShader _OverlayShader;
     private MetalGpuShader _TransformShader;
     private BlockingCollection<Task> _ShaderTasks = new BlockingCollection<Task>();
+    private Task _ShaderThread;
 
     
-    public MetalGpuDrawer(byte[] bitmapData, int width, int height)
+    public MetalGpuDrawer(byte[] bitmapData, int width, int height) : base(bitmapData, width, height)
     {
         var error = new NSError(IntPtr.Zero);
         try
@@ -40,6 +38,11 @@ public class MetalGpuDrawer
 
             // 1. Initialize GPU Device and Command Queue
             Device = MTLDevice.CreateSystemDefaultDevice();
+            if (Device.NativePtr == IntPtr.Zero)
+            {
+                throw new NotSupportedException("Metal is not supported or no Metal GPU device was found.");
+
+            }
             CommandQueue = Device.NewCommandQueue();
 
             // 3. Allocate GPU memory Buffers
@@ -52,7 +55,8 @@ public class MetalGpuDrawer
             _TransformShader = new MetalGpuShader(this, "Transform.metal");
 
             // start shader task queue
-            (new Task(shaderTaskQueue)).Start();
+            _ShaderThread = new Task(shaderTaskQueue);
+            _ShaderThread.Start();
         }
         finally
         {
@@ -69,6 +73,8 @@ public class MetalGpuDrawer
         Dev_OutputBuffer.Dispose();
         CommandQueue.Dispose();
         Device.Dispose();
+
+        _ShaderThread.Dispose();
     }
 
     private void shaderTaskQueue()
@@ -79,18 +85,28 @@ public class MetalGpuDrawer
         }
     }
 
-    public void DrawOverlay(MetalGpuShader.Moon? moon = null)
+    public override void DrawOverlay(GpuDrawer.IOverlay overlay, GpuDrawer.Moon? moon = null)
     {
         _ShaderTasks.Add(new Task(() => {
             _OverlayShader.Draw(moon);
         }));
     }
     
-    public void DrawTransform() //(WriteableBitmap bitmap)
+    public override void DrawTransform(GpuDrawer.ITransform transform)
     {
         _ShaderTasks.Add(new Task(() => {
             _TransformShader.Draw();
         }));
+    }
+
+    public override IOverlay NewOverlay(string R_Function, string G_Function, string B_Function)
+    {
+        return _OverlayShader;
+    }
+
+    public override ITransform NewTransform(string X_Function, string Y_Function)
+    {
+        return _TransformShader;
     }
 }
 

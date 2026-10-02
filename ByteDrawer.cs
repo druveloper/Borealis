@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls.Platform;
+using Borealis.GpuCode;
 
 namespace Borealis;
 
@@ -33,7 +34,9 @@ public class ByteDrawer
     private int _A = 3;
     private delegate byte getAlphaDelegate(long i);
     private getAlphaDelegate _GetAlpha;
-    private MetalGpuDrawer _GpuDrawer;
+    private GpuDrawer _GpuDrawer;
+    private GpuDrawer.IOverlay _GpuOverlay;
+    private GpuDrawer.ITransform _GpuTransform;
     
     public enum Format
     {
@@ -89,11 +92,13 @@ public class ByteDrawer
         _BytePointer = _MainBytes;
 
         _GpuDrawer = new MetalGpuDrawer(_MainBytes, width, height);
+        _GpuOverlay = _GpuDrawer.NewOverlay("", "", "");
+        _GpuTransform = _GpuDrawer.NewTransform("", "");
     }
 
     public void DrawOverlay(double moonX, double moonY, Color color)
     {
-        _GpuDrawer.DrawOverlay(new MetalGpuShader.Moon()
+        _GpuDrawer.DrawOverlay(_GpuOverlay, new GpuDrawer.Moon()
         {
             Position = new Vector2() {X = (float)moonX, Y = (float)moonY},
             Color = color
@@ -102,7 +107,7 @@ public class ByteDrawer
 
     public void DrawTransform()
     {
-        _GpuDrawer.DrawTransform();
+        _GpuDrawer.DrawTransform(_GpuTransform);
     }
 
     /// <summary>

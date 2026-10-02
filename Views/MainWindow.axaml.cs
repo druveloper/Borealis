@@ -130,6 +130,11 @@ public partial class MainWindow : Window
                 MainImage.Render();
                 Thread.Sleep(1000 / 32);
             }
+            else
+            {
+                MainImage.Render();
+                Thread.Sleep(1000 / 32);
+            }
         }
     }
 

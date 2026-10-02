@@ -7,6 +7,7 @@ using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Threading;
+using Borealis.GpuCode;
 using SharpMetal;
 using SharpMetal.Foundation;
 using SharpMetal.Metal;
@@ -14,14 +15,8 @@ using SharpMetal.Metal;
 namespace Borealis;
 
     [SupportedOSPlatform("macos")]
-    public class MetalGpuShader
+    public class MetalGpuShader : GpuDrawer.IOverlay, GpuDrawer.ITransform
     {
-        public class Moon
-        {
-            public Vector2 Position = Vector2.NaN;
-            public Color Color = Color.Transparent;
-        }
-
         private MetalGpuDrawer _Drawer;
         private MTLLibrary _Dev_Library;
         private MTLComputePipelineState _Dev_PipelineState;
@@ -85,7 +80,7 @@ namespace Borealis;
             _Dev_Library.Dispose();
         }
 
-        public void Draw(Moon? moon = null)
+        public void Draw(GpuDrawer.Moon? moon = null)
         {
             lock(_Drawer)
             {
@@ -148,4 +143,14 @@ namespace Borealis;
 
             } // end lock
         }
+
+    void GpuDrawer.IOverlay.Modify(string R_Function, string G_Function, string B_Function)
+    {
+        throw new NotImplementedException();
     }
+
+    void GpuDrawer.ITransform.Modify(string X_Function, string Y_Function)
+    {
+        throw new NotImplementedException();
+    }
+}
