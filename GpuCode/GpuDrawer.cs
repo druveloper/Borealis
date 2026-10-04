@@ -3,6 +3,7 @@ using System.Data;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Numerics;
 using System.Runtime;
@@ -36,7 +37,6 @@ public abstract class GpuDrawer
     public byte[] Host_BitmapData;
 
     protected int _Width, _Height;
-    protected static readonly JsonArray _ValidMathWords = (JsonArray) JsonArray.Parse(File.ReadAllText("GpuCode/Reference/MathFunctions.json"));
 
     
     public GpuDrawer(byte[] bitmapData, int width, int height)
@@ -46,64 +46,28 @@ public abstract class GpuDrawer
         _Height = height;
     }
 
-    public abstract IOverlay NewOverlay(string R_Function, string G_Function, string B_Function);
+    public IOverlay NewOverlay(string R_Function, string G_Function, string B_Function)
+    {
+        string rFunction = MathValidator.ValidateMathExpression(R_Function);
+        string gFunction = MathValidator.ValidateMathExpression(G_Function);
+        string bFunction = MathValidator.ValidateMathExpression(B_Function);
 
-    public abstract ITransform NewTransform(string X_Function, string Y_Function);
+        return newOverlay(rFunction, gFunction, bFunction);
+    }
+
+    public ITransform NewTransform(string X_Function, string Y_Function)
+    {
+        string xFunction = MathValidator.ValidateMathExpression(X_Function);
+        string yFunction = MathValidator.ValidateMathExpression(Y_Function);
+
+        return newTransform(xFunction, yFunction);
+    }
 
     public abstract void DrawOverlay(IOverlay overlay, Moon? moon = null);
     
     public abstract void DrawTransform(ITransform transform);
 
-    protected static string cleanMathExpression(string mathExpression)
-    {
-        mathExpression = mathExpression.Replace("_", "");
-        mathExpression = Regex.Replace(mathExpression, "\\s+", " ");
+    protected abstract IOverlay newOverlay(string R_Function, string G_Function, string B_Function);
 
-        return mathExpression;
-    }
-
-    protected static bool validateMathExpression(string mathExpression, string[] specialWords)
-    {
-        var validCharsRegEx = new Regex("[^a-zA-Z0-9. ()*/%+-]");
-
-        var invalidCharsFound = validCharsRegEx.Matches(mathExpression);
-
-        if (invalidCharsFound.Count > 0)
-        {
-            var positions = invalidCharsFound.Select((m) => m.Index);
-            var invalidChars = invalidCharsFound.Select((m) => m.Value[0])
-                .Distinct().Select((c) => {
-                    if (char.IsSymbol(c) || char.IsPunctuation(c))
-                    {
-                        return c.ToString();
-                    }
-                    else
-                    {
-                        return "0x" + char.GetNumericValue(c).ToString("X2");
-                    }
-                });
-            
-            string exampleDescription = "";
-            if (positions.Count() <= 5)
-            {
-                exampleDescription = $" ({String.Join(",", invalidChars)})";
-            }
-
-            string positionDescription = $"from positions {positions.Min()} to {positions.Max()}";
-            if (positions.Count() == 1)
-            {
-                positionDescription = $"at position {positions.FirstOrDefault()}";
-            }
-            else if (positions.Count() == 2)
-            {
-                positionDescription = $"at positions {positions.Min()} and {positions.Max()}";
-            }
-
-            throw new ApplicationException($"Found invalid characters{exampleDescription} in math expression {positionDescription}.");
-        }
-
-
-
-        return true;
-    }
+    protected abstract ITransform newTransform(string X_Function, string Y_Function);
 }

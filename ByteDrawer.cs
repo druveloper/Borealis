@@ -92,8 +92,8 @@ public class ByteDrawer
         _BytePointer = _MainBytes;
 
         _GpuDrawer = new MetalGpuDrawer(_MainBytes, width, height);
-        _GpuOverlay = _GpuDrawer.NewOverlay("", "", "");
-        _GpuTransform = _GpuDrawer.NewTransform("", "");
+        _GpuOverlay = _GpuDrawer.NewOverlay("0", "0", "0");
+        _GpuTransform = _GpuDrawer.NewTransform("0", "0");
     }
 
     public void DrawOverlay(double moonX, double moonY, Color color)

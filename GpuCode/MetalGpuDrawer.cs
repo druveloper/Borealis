@@ -77,14 +77,6 @@ public class MetalGpuDrawer : GpuDrawer
         _ShaderThread.Dispose();
     }
 
-    private void shaderTaskQueue()
-    {
-        foreach(Task shaderTask in _ShaderTasks.GetConsumingEnumerable())
-        {
-            shaderTask.RunSynchronously();
-        }
-    }
-
     public override void DrawOverlay(GpuDrawer.IOverlay overlay, GpuDrawer.Moon? moon = null)
     {
         _ShaderTasks.Add(new Task(() => {
@@ -99,14 +91,23 @@ public class MetalGpuDrawer : GpuDrawer
         }));
     }
 
-    public override IOverlay NewOverlay(string R_Function, string G_Function, string B_Function)
+    protected override IOverlay newOverlay(string R_Function, string G_Function, string B_Function)
     {
         return _OverlayShader;
     }
 
-    public override ITransform NewTransform(string X_Function, string Y_Function)
+    protected override ITransform newTransform(string X_Function, string Y_Function)
     {
         return _TransformShader;
     }
+
+    private void shaderTaskQueue()
+    {
+        foreach(Task shaderTask in _ShaderTasks.GetConsumingEnumerable())
+        {
+            shaderTask.RunSynchronously();
+        }
+    }
+
 }
 
