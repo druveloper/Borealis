@@ -81,8 +81,8 @@
                 <TextBlock Text="y' = " VerticalAlignment="Center"></TextBlock>
                 <TextBlock Name="fyTextBlock" Margin="10, 0" TextAlignment="Right" Width="50"></TextBlock>
             </StackPanel>
-            <TextBox Name="MathTextBox" AcceptsReturn="True" AcceptsTab="true" Width="350" Height="100"></TextBox>
-            <TextBlock Name="MathTexResponse" Margin="10" PointerReleased="MathTexResponse_PointerReleased"></TextBlock>
+            <TextBox Name="MathTextBox" AcceptsReturn="True" AcceptsTab="true" TextWrapping="Wrap" Width="350" Height="100"></TextBox>
+            <TextBlock Name="MathTextResponse" Width="350" Margin="10" TextWrapping="Wrap" PointerReleased="MathTextResponse_PointerReleased"></TextBlock>
         </StackPanel>
         <StackPanel Orientation="Horizontal" Grid.Column="1" Grid.Row="2">
             <TextBlock Text="t = "></TextBlock>

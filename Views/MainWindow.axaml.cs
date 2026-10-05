@@ -445,17 +445,17 @@ public partial class MainWindow : Window
     {
         try
         {
-            MathTexResponse.Text = MathValidator.ValidateMathExpression(MathTextBox.Text ?? "");
+            MathTextResponse.Text = MathValidator.ValidateMathExpression(MathTextBox.Text ?? "");
         }
         catch (ApplicationException ex)
         {
-            MathTexResponse.Text = ex.Message;
+            MathTextResponse.Text = ex.Message;
         }
     }
 
-    private void MathTexResponse_PointerReleased(object? sender, PointerReleasedEventArgs e)
+    private void MathTextResponse_PointerReleased(object? sender, PointerReleasedEventArgs e)
     {
-        var match = new System.Text.RegularExpressions.Regex(" position (\\d+)").Match(MathTexResponse.Text);
+        var match = new System.Text.RegularExpressions.Regex(" position (\\d+)").Match(MathTextResponse.Text);
 
         if (match.Success)
         {

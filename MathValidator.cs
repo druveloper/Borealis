@@ -32,6 +32,12 @@ public static class MathValidator
             Text = text;
             CharOffset = charOffset;
         }
+
+        public override string ToString()
+        {
+            // helps with debugging
+            return $"{CharOffset.ToString("D2")} {IsProcessed} {Discard} {Text}";
+        }
     }
 
     private class MathWord {
@@ -112,7 +118,7 @@ public static class MathValidator
 
         // ***** validate words and arguments *****
 
-        var cleanEpression = validateSyntax(mathExpression);
+        var cleanEpression = validateSyntax(mathExpression, 0, true);
 
         return cleanEpression;
     }
@@ -403,14 +409,21 @@ public static class MathValidator
                     // check for operator
                     if (_OperatorRegEx.IsMatch(c.ToString()))
                     {
+                        if (previousNegative)
+                        {
+                            // treat previous negative sign as substraction operator
+                            tokens.Add(new Token("-", charOffset + i - 1));
+                            previousNegative = false;
+                        }
+
                         // handle minus signs carefully
                         if (c == '-')
                         {
-                            a = (i == 0 ? ' ' : expression[i-1]);
-                            b = (i+1 == expression.Length ? '\0' : expression[i+1]);
+                            char c1 = (i == 0 ? ' ' : expression[i-1]);
+                            char c2 = (i+1 == expression.Length ? '\0' : expression[i+1]);
 
-                            // if white-space directly before and no white-space directly after
-                            if (_SpaceRegEx.IsMatch(a.ToString()) && !_SpaceRegEx.IsMatch(b.ToString()))
+                            // if white-space directly before and parenthesis directly after
+                            if (_SpaceRegEx.IsMatch(c1.ToString()) && c2 == '(')
                             {
                                 // treat as negative sign
                                 previousNegative = true;
@@ -459,140 +472,156 @@ public static class MathValidator
     /// <param name="expression"></param>
     /// <param name="charOffset">optional parameter used in recursion, representing offset from original expression</param>
     /// <returns>Returns the C-compliant version of the expression</returns>
-    private static string validateSyntax(string expression, int charOffset = 0)
+    private static string validateSyntax(string expression, int charOffset = 0, bool debug = false)
     {
         // tokenize to handle white space and group parentheses
 
         List<Token> tokenList = tokenizeExpression(expression, charOffset);
 
-        if (tokenList.Count == 0)
-        {
-            throw new ApplicationException($"Empty expression found at position {charOffset}.");
+        try {
+
+            if (tokenList.Count == 0)
+            {
+                throw new ApplicationException($"Empty expression found at position {charOffset}.");
+            }
+
+            // process numbers, constants, parentheses, and functions
+
+            tokenList = processTokenList(tokenList, (token, t, tokenList) =>
+            {
+                // handle numbers
+                var numberMatch = _FullNumberRegex.Match(token.Text);
+                if (numberMatch.Success && numberMatch.Index == 0)
+                {
+                    token.IsProcessed = true;
+                    return;
+                }
+
+                var negative = false;
+                if (token.Text.Length > 1 && token.Text.StartsWith("-"))
+                {
+                    negative = true;
+                    token.Text = token.Text.Substring(1);
+                }
+
+                // handle parentheses
+                if (token.Text.StartsWith("("))
+                {
+                    token.Text = "(" + validateSyntax(token.Text.Substring(1, token.Text.Length - 2), token.CharOffset+1) + ")";
+                    token.IsProcessed = true;
+                }
+                else if (IsValidMathWord(token.Text))
+                {
+                    var mathWord = _ValidMathWords[token.Text];
+
+                    // handle constants and variables
+                    if (mathWord.Formula == token.Text)
+                    {
+                        token.IsProcessed = true;
+                    }
+                        // handle math functions
+                    else if (mathWord.Formula.Contains("("))
+                    {
+                        // get parameter count
+                        var paramCount = 1 + mathWord.Formula.Count((c) => (c == ','));
+
+                        if (t + 1 == tokenList.Count || !tokenList[t+1].Text.StartsWith("("))
+                        {
+                            throw new ApplicationException($"Function {mathWord}() requires {paramCount} arguments but found none at position {token.CharOffset + token.Text.Length}.");
+                        }
+
+                        // tokenize parameters
+                        var paramToken = tokenList[t+1];
+                        var paramTokens = tokenizeExpression(paramToken.Text, paramToken.CharOffset, true);
+
+                        if (paramTokens.Count != paramCount)
+                        {
+                            throw new ApplicationException($"Function {mathWord}() requires {paramCount} arguments but found {paramTokens.Count} at position {token.CharOffset + token.Text.Length}.");
+                        }
+
+                        foreach(var param in paramTokens)
+                        {
+                            param.Text = validateSyntax(param.Text, param.CharOffset);
+                            param.IsProcessed = true;
+                        }
+
+                        string paramString = String.Join(",", paramTokens.Select((p) => p.Text));
+                        token.Text = $"{token.Text}({paramString})";
+
+                        token.IsProcessed = true;
+                        paramToken.Discard = true;
+                    }
+                }
+                else
+                {
+                    throw new ApplicationException($"Unrecognized word '{token.Text}' found at position {token.CharOffset}");
+                }
+
+                if (!token.Discard && negative)
+                {
+                    token.Text = $"(-1 * {token.Text})";
+                }
+            });
+
+            // scan for operators
+
+            tokenList = scanForOperators(tokenList, "^");
+            tokenList = scanForOperators(tokenList, "*/");
+
+
+            // - handle implied multiplication
+            for(int t = 0; t < tokenList.Count - 1; t++)
+            {
+                Token operand1 = tokenList[t];
+                Token operand2 = tokenList[t+1];
+
+                if (operand1.IsProcessed && operand2.IsProcessed)
+                {
+                    operand1.Text = $"{operand1.Text} * {operand2.Text}";
+                    tokenList.Remove(operand2);
+                }
+            }
+
+
+            tokenList = scanForOperators(tokenList, "+-");
+
+
+            // final sanity checks
+
+            var unprocessed = tokenList.Where((o) => !o.IsProcessed);
+            if (unprocessed.Count() > 0)
+            {
+                if (unprocessed.Count() == 1)
+                {
+                    throw new ApplicationException($"Unprocessed token found at position {unprocessed.FirstOrDefault().CharOffset}.");
+                }
+                else
+                {
+                    int min = unprocessed.Min((o) => o.CharOffset);
+                    int max = unprocessed.Max((o) => o.CharOffset);
+                    throw new ApplicationException($"Unprocessed tokens found from positions {min} to {max}.");
+                }
+            }
+
+            if (tokenList.Count > 1)
+            {
+                int max = tokenList.Max((o) => o.CharOffset);
+                throw new ApplicationException($"Second expression found at position {max}.");
+            }
+
+            return tokenList[0].Text;
         }
-
-        // process numbers, constants, parentheses, and functions
-
-        tokenList = processTokenList(tokenList, (token, t, tokenList) =>
+        catch(ApplicationException ex)
         {
-            // handle numbers
-            if (_FullNumberRegex.IsMatch(token.Text))
+            if (debug)
             {
-                token.IsProcessed = true;
-                return;
-            }
-
-            var negative = false;
-            if (token.Text.StartsWith("-"))
-            {
-                negative = true;
-                token.Text = token.Text.Substring(1);
-            }
-
-            // handle parentheses
-            if (token.Text.StartsWith("("))
-            {
-                token.Text = "(" + validateSyntax(token.Text.Substring(1, token.Text.Length - 2), token.CharOffset+1) + ")";
-                token.IsProcessed = true;
-            }
-            else if (IsValidMathWord(token.Text))
-            {
-                var mathWord = _ValidMathWords[token.Text];
-
-                // handle constants and variables
-                if (mathWord.Formula == token.Text)
-                {
-                    token.IsProcessed = true;
-                }
-                    // handle math functions
-                else if (mathWord.Formula.Contains("("))
-                {
-                    // get parameter count
-                    var paramCount = 1 + mathWord.Formula.Count((c) => (c == ','));
-
-                    if (t + 1 == tokenList.Count || !tokenList[t+1].Text.StartsWith("("))
-                    {
-                        throw new ApplicationException($"Function {mathWord}() requires {paramCount} arguments but found none at position {token.CharOffset + token.Text.Length}.");
-                    }
-
-                    // tokenize parameters
-                    var paramToken = tokenList[t+1];
-                    var paramTokens = tokenizeExpression(paramToken.Text, paramToken.CharOffset, true);
-
-                    if (paramTokens.Count != paramCount)
-                    {
-                        throw new ApplicationException($"Function {mathWord}() requires {paramCount} arguments but found {paramTokens.Count} at position {token.CharOffset + token.Text.Length}.");
-                    }
-
-                    foreach(var param in paramTokens)
-                    {
-                        param.Text = validateSyntax(param.Text, param.CharOffset);
-                        param.IsProcessed = true;
-                    }
-
-                    string paramString = String.Join(",", paramTokens.Select((p) => p.Text));
-                    token.Text = $"{token.Text}({paramString})";
-
-                    token.IsProcessed = true;
-                    paramToken.Discard = true;
-                }
+                var tokenOutput = String.Join("", tokenList.Select((o) => $"\r\n{o}"));
+                throw new ApplicationException(ex.Message + tokenOutput);
             }
             else
             {
-                throw new ApplicationException($"Unrecognized word '{token.Text}' found at position {token.CharOffset}");
-            }
-
-            if (!token.Discard && negative)
-            {
-                token.Text = $"(-1 * {token.Text})";
-            }
-        });
-
-        // scan for operators
-
-        tokenList = scanForOperators(tokenList, "^");
-        tokenList = scanForOperators(tokenList, "*/");
-
-
-        // - handle implied multiplication
-        for(int t = 0; t < tokenList.Count - 1; t++)
-        {
-            Token operand1 = tokenList[t];
-            Token operand2 = tokenList[t+1];
-
-            if (operand1.IsProcessed && operand2.IsProcessed)
-            {
-                operand1.Text = $"{operand1.Text} * {operand2.Text}";
-                tokenList.Remove(operand2);
+                throw new ApplicationException(ex.Message, ex);
             }
         }
-
-
-        tokenList = scanForOperators(tokenList, "+-");
-
-
-        // final sanity checks
-
-        var unprocessed = tokenList.Where((o) => !o.IsProcessed);
-        if (unprocessed.Count() > 0)
-        {
-            if (unprocessed.Count() == 1)
-            {
-                throw new ApplicationException($"Unprocessed token found at position {unprocessed.FirstOrDefault().CharOffset}.");
-            }
-            else
-            {
-                int min = unprocessed.Min((o) => o.CharOffset);
-                int max = unprocessed.Max((o) => o.CharOffset);
-                throw new ApplicationException($"Unprocessed tokens found from positions {min} to {max}.");
-            }
-        }
-
-        if (tokenList.Count > 1)
-        {
-            int max = tokenList.Max((o) => o.CharOffset);
-            throw new ApplicationException($"Second expression found at position {max}.");
-        }
-
-        return tokenList[0].Text;
     }
 }
