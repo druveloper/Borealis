@@ -12,36 +12,6 @@ namespace Borealis;
 
 public static class MathValidator
 {
-    /// <summary>
-    /// Represents a mathematical operation, such as addition or cosine
-    /// </summary>
-    private class MathOp
-    {
-        public int CharIndex = -1;
-        public string Word;
-        public List<MathOp> Arguments = new List<MathOp>();
-
-        public MathOp(string word, int index)
-        {
-            Word = word;
-            CharIndex = index;
-        }
-
-        public MathOp(string word, int index, MathOp argument)
-        {
-            Word = word;
-            CharIndex = index;
-            Arguments.Add(argument);
-        }
-
-        public MathOp(string word, int wordIndex, string argument, int argIndex)
-        {
-            Word = word;
-            CharIndex = wordIndex;
-            Arguments.Add(new MathOp(argument, argIndex));
-        }
-    }
-
     private class Token
     {
         /// <summary>
@@ -53,6 +23,7 @@ public static class MathValidator
         /// indicates the text is already in validated form
         /// </summary>
         public bool IsProcessed = false;
+
         public string Text;
         public int CharOffset;
 
@@ -65,6 +36,11 @@ public static class MathValidator
 
     private class MathWord {
         public string Word, Formula, Description;
+
+        public override string ToString()
+        {
+            return Word;
+        }
     }
 
     private static readonly Dictionary<string, MathWord> _ValidMathWords = buildWordLookup((JsonArray) JsonArray.Parse(File.ReadAllText("GpuCode/Reference/MathFunctions.json")));
@@ -95,7 +71,7 @@ public static class MathValidator
     {
         // ***** validate characters *****
 
-        var validCharsRegEx = new Regex("[^a-zA-Z0-9. _()*/%+-]");
+        var validCharsRegEx = new Regex("[^a-zA-Z0-9. _(,)^*/%+-]");
 
         var invalidCharsFound = validCharsRegEx.Matches(mathExpression);
 
@@ -229,7 +205,17 @@ public static class MathValidator
                 throw new ApplicationException($"Non-numerical operand found to the right of '{text}' at position {operand2.CharOffset}.");
             }            
 
-            token.Text = $"{operand1.Text} {text} {operand2.Text}";
+            string cleanText;
+            if (text == "^")
+            {
+                cleanText = $"pow({operand1.Text}, {operand2.Text})";
+            }
+            else
+            {
+                cleanText = $"{operand1.Text} {text} {operand2.Text}";
+            }
+
+            token.Text = cleanText;
             token.IsProcessed = true;
             operand1.Discard = true;
             operand2.Discard = true;
@@ -242,20 +228,21 @@ public static class MathValidator
     /// <param name="expression"></param>
     /// <param name="startIndex"></param>
     /// <param name="stopOnComma"></param>
-    /// <returns></returns>
-    /// <exception cref="ApplicationException"></exception>
+    /// <returns>the index found, or -1 if not found</returns>
     private static int findClosure(string expression, int startIndex, bool stopOnComma = false)
     {
-        int i = startIndex;
-
-        if (i == expression.Length)
+        if (startIndex == expression.Length)
         {
-            throw new ApplicationException("Cannot end expression with open parenthesis.");
+            return -1;
         }
+
         int level = 0;
-        char c = expression[i];
-        while(c != ')' || level > 0)
+        char c;
+        int i = startIndex;
+        while(i < expression.Length && (expression[i] != ')' || level > 0))
         {
+            c = expression[i];
+
             if (c == '(')
                 level++;
             else if (c == ')')
@@ -263,13 +250,15 @@ public static class MathValidator
             else if (stopOnComma && c == ',' && level == 0)
                 break;
 
-            c = expression[i++];
-            
-            if (i == expression.Length)
-                break;
+            i++;
         }
 
-        return i;
+        if (i < expression.Length)
+        {
+            return i;
+        }
+        
+        return -1;
     }
 
     /// <summary>
@@ -277,10 +266,10 @@ public static class MathValidator
     /// </summary>
     /// <param name="expression"></param>
     /// <param name="charOffset">the offset from the original expression, so that error messages and tokens use correct positiion values</param>
-    /// <param name="stopOnCommas">set to true to tokenize function parameters</param>
+    /// <param name="treatAsArguments">set to true to tokenize function parameters</param>
     /// <returns></returns>
     /// <exception cref="ApplicationException"></exception>
-    private static List<Token> tokenizeExpression(string expression, int charOffset = 0, bool stopOnCommas = false)
+    private static List<Token> tokenizeExpression(string expression, int charOffset = 0, bool treatAsArguments = false)
     {
         Match numberMatch, operatorMatch, spaceMatch, wordMatch;
         List<Token> tokens = new List<Token>();
@@ -295,7 +284,7 @@ public static class MathValidator
         {
             // skip white space 
             c = expression[i];
-            if (_SpaceRegEx.Match(c.ToString(), i).Success)
+            if (_SpaceRegEx.Match(c.ToString()).Success)
             {
                 spaceMatch = _SpaceRegEx.Match(expression, i);
                 i += spaceMatch.Length;
@@ -310,55 +299,64 @@ public static class MathValidator
             {
                 case '(': // open paren -- look for closed paren
                     
-                    if (stopOnCommas)
+                    if (treatAsArguments)
                     {
                         while(c != ')')
                         {
-                            a = ++i; // ignore open parenthesis or comma
+                            a = i++;
                             if (a == expression.Length)
                             {
-                                throw new ApplicationException($"Unclosed parenthesis at end of expression.");
+                                throw new ApplicationException($"Unclosed parenthesis at position {charOffset + a}.");
                             }
                             i = findClosure(expression, i, true);
+                            if (i < 0)
+                            {
+                                throw new ApplicationException($"Unexpected end of argument started at position {charOffset + a}.");
+                            }
                             c = expression[i];
                             if (c != ')' && c != ',')
                             {
-                                throw new ApplicationException($"Unexpected end of argument at end of expression.");
+                                throw new ApplicationException($"Expected ')' or comma at end of argument at position {charOffset + i}.");
                             }
                             
                             b = i++;
-                            if (a == b)
-                            {
-                                throw new ApplicationException($"Empty argument provided at position {b}.");
-                            }
-                            subExpression = expression.Substring(a, b - a);
+                            // if (b - a == 2)
+                            // {
+                            //     throw new ApplicationException($"Empty argument found at position {b}.");
+                            // }
+                            subExpression = expression.Substring(a + 1, b - a - 1); // remove parentheses/commas when tokenizing arguments
                             
-                            tokens.Add(new Token(subExpression, a));
+                            tokens.Add(new Token(subExpression, charOffset + a + 1));
                         }
                     }
                     else
                     {
                         a = i++;
                         i = findClosure(expression, i, false);
+                        if (i < 0)
+                        {
+                            throw new ApplicationException($"Unclosed parenthesis at position {charOffset + a}.");
+                        }
                         c = expression[i];
                         if (c != ')')
                         {
-                            throw new ApplicationException($"Unclosed parenthesis at end of expression.");
+                            throw new ApplicationException($"Expected ')' at end of sub-expression at position {charOffset + i}.");
                         }
                         
                         b = i++;
-                        if (a == b)
-                        {
-                            throw new ApplicationException($"Empty expression provided at position {b}.");
-                        }
-                        subExpression = expression.Substring(a, b - a);
+                        // if (b - a == 2)
+                        // {
+                        //     throw new ApplicationException($"Empty expression found at position {b}.");
+                        // }
+                        subExpression = expression.Substring(a, b - a + 1); // keep parentheses when tokenizing full expressions
                         if (previousNegative)
                         {
-                            tokens.Add(new Token($"-{subExpression})", a-1));
+                            tokens.Add(new Token($"-{subExpression}", charOffset + a - 1));
+                            previousNegative = false;
                         }
                         else
                         {
-                            tokens.Add(new Token(subExpression, a));
+                            tokens.Add(new Token(subExpression, charOffset + a));
                         }
                     }
 
@@ -377,31 +375,33 @@ public static class MathValidator
                         numberMatch = _FullNumberRegex.Match(expression, i);
 
                         // add token if valid
-                        if (numberMatch.Success)
+                        if (numberMatch.Success && numberMatch.Index == i)
                         {
-                            tokens.Add(new Token(numberMatch.Value.Replace("_", ""), i));
+                            tokens.Add(new Token(numberMatch.Value.Replace("_", ""), charOffset + i));
                             i += numberMatch.Length;
-                        }
 
-                        break;
+                            break;
+                        }
                     }
-                        // check for math functions and other key words
-                    else if (_StartWordRegEx. IsMatch(c.ToString()))
+                    
+                    // check for math functions and other key words
+                    if (_StartWordRegEx.IsMatch(c.ToString()))
                     {
                         wordMatch = _FullWordRegEx.Match(expression, i);
 
                         // add token if valid
-                        if (wordMatch.Success)
+                        if (wordMatch.Success && wordMatch.Index == i)
                         {
-                            tokens.Add(new Token(wordMatch.Value, i));
+                            tokens.Add(new Token(wordMatch.Value, charOffset + i));
 
                             i += wordMatch.Length;
-                        }
 
-                        break;
+                            break;
+                        }
                     }
-                        // check for operator
-                    else if (_OperatorRegEx.IsMatch(c.ToString()))
+                    
+                    // check for operator
+                    if (_OperatorRegEx.IsMatch(c.ToString()))
                     {
                         // handle minus signs carefully
                         if (c == '-')
@@ -414,38 +414,39 @@ public static class MathValidator
                             {
                                 // treat as negative sign
                                 previousNegative = true;
-
-                                i++;
                             }
                             else
                             {
                                 // treat as substraction operator
-                                tokens.Add(new Token("-", i++));
+                                tokens.Add(new Token("-", charOffset + i));
                             }
+
+                            i++;
 
                             break;
                         }
                             // handle other operators
                         else
                         {
-                            tokens.Add(new Token(c.ToString(), i++));
+                            tokens.Add(new Token(c.ToString(), charOffset + i++));
                             break;
                         }
                     }
+
+                    // if we get here, we don't know what the character is for
+
+                    string printableChar;
+                    if (char.IsSymbol(c) || char.IsPunctuation(c))
+                    {
+                        printableChar = c.ToString();
+                    }
                     else
                     {
-                        string printableChar;
-                        if (char.IsSymbol(c) || char.IsPunctuation(c))
-                        {
-                            printableChar = c.ToString();
-                        }
-                        else
-                        {
-                            printableChar = "0x" + char.GetNumericValue(c).ToString("X2");
-                        }
-
-                        throw new ApplicationException($"Unexpected character '{printableChar}' found at position {charOffset + i}.");
+                        printableChar = "0x" + ((int)char.GetNumericValue(c)).ToString("X2");
                     }
+
+                    throw new ApplicationException($"Unexpected character '{printableChar}' found at position {charOffset + i}.");
+                    
             } // end switch
         } // end while
 
@@ -462,7 +463,7 @@ public static class MathValidator
     {
         // tokenize to handle white space and group parentheses
 
-        List<Token> tokenList = tokenizeExpression(expression);
+        List<Token> tokenList = tokenizeExpression(expression, charOffset);
 
         if (tokenList.Count == 0)
         {
@@ -588,7 +589,7 @@ public static class MathValidator
 
         if (tokenList.Count > 1)
         {
-            int max = unprocessed.Max((o) => o.CharOffset);
+            int max = tokenList.Max((o) => o.CharOffset);
             throw new ApplicationException($"Second expression found at position {max}.");
         }
 

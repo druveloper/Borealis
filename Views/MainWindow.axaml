@@ -54,7 +54,6 @@
         </Border>
         <StackPanel Name="ControlStackPanel" Grid.Column="2" Grid.Row="1" Margin="20, 0">
             <StackPanel Orientation="Horizontal" Margin="0, 0">
-                
                 <Button Name="ClearButton" Margin="0, 0, 5, 0" Click="ClearButton_Click">Clear</Button>
                 <Button Name="VectorButton" Margin="5, 0" Click="VectorButton_Click">Vector Field</Button>
                 <Button Name="OverlayButton" Margin="5, 0" Click="OverlayButton_Click">Show Overlay</Button>
@@ -82,6 +81,8 @@
                 <TextBlock Text="y' = " VerticalAlignment="Center"></TextBlock>
                 <TextBlock Name="fyTextBlock" Margin="10, 0" TextAlignment="Right" Width="50"></TextBlock>
             </StackPanel>
+            <TextBox Name="MathTextBox" AcceptsReturn="True" AcceptsTab="true" Width="350" Height="100"></TextBox>
+            <TextBlock Name="MathTexResponse" Margin="10" PointerReleased="MathTexResponse_PointerReleased"></TextBlock>
         </StackPanel>
         <StackPanel Orientation="Horizontal" Grid.Column="1" Grid.Row="2">
             <TextBlock Text="t = "></TextBlock>

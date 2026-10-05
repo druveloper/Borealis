@@ -84,6 +84,8 @@ public partial class MainWindow : Window
 
         // Drawer.DrawOverlay(-1, 1, System.Drawing.Color.Red);
         // MainImage.Render();
+
+        MathTextBox.TextChanged += MathTextBox_TextInput;
     }
 
     private void backgroundTask()
@@ -437,5 +439,28 @@ public partial class MainWindow : Window
         string transformName = ((ComboBox)sender).SelectedItem?.ToString() ?? "";
 
         Transform = typeof(Borealis.Transforms).GetMethod(transformName)?.CreateDelegate<PointTransform>() ?? Transforms.None;
+    }
+
+    private void MathTextBox_TextInput(object? sender, TextChangedEventArgs e)
+    {
+        try
+        {
+            MathTexResponse.Text = MathValidator.ValidateMathExpression(MathTextBox.Text ?? "");
+        }
+        catch (ApplicationException ex)
+        {
+            MathTexResponse.Text = ex.Message;
+        }
+    }
+
+    private void MathTexResponse_PointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        var match = new System.Text.RegularExpressions.Regex(" position (\\d+)").Match(MathTexResponse.Text);
+
+        if (match.Success)
+        {
+            int position = Int32.Parse(match.Groups[1].Value);
+            MathTextBox.CaretIndex = position;
+        }
     }
 }
