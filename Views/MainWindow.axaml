@@ -10,7 +10,7 @@
         Icon="/Assets/avalonia-logo.ico"
         Title="Borealis"
         >
-
+    
     <Design.DataContext>
         <!-- This only sets the DataContext for the previewer in an IDE,
              to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
@@ -28,18 +28,18 @@
             <RowDefinition Height="*"></RowDefinition>
             <RowDefinition Height="50"></RowDefinition>
         </Grid.RowDefinitions>
-        <StackPanel Grid.Column="1" Grid.Row="0" ClipToBounds="true">
-            <StackPanel Orientation="Horizontal" Margin="0, 5">
-                <Button Name="PauseButton" Margin="0, 0, 5, 0" Width="60" HorizontalContentAlignment="Center" Click="PauseButton_Click">
+        <StackPanel Grid.Column="1" Grid.Row="0" ClipToBounds="true" Margin="0">
+            <StackPanel Orientation="Horizontal">
+                <Button Name="PauseButton" Width="60" HorizontalContentAlignment="Center" Click="PauseButton_Click">
                     Play
                 </Button>
-                <TextBlock Text="Timer Speed" Margin="10, 0" VerticalAlignment="Center"></TextBlock>
+                <TextBlock Text="Timer Speed" VerticalAlignment="Center"></TextBlock>
                 <Slider Name="TimerSpeedSlider" Width="100" Minimum="0" Maximum="1000" Value="{Binding TimerSpeed}"></Slider>
-                <TextBlock Text="{Binding TimerSpeed, StringFormat='{}{0}'}" Margin="5, 0" VerticalAlignment="Center"></TextBlock>
-                <TextBlock Text="Transform" Margin="10, 0, 5, 0" VerticalAlignment="Center"></TextBlock>
+                <TextBlock Text="{Binding TimerSpeed, StringFormat='{}{0}'}" VerticalAlignment="Center"></TextBlock>
+                <TextBlock Text="Transform" VerticalAlignment="Center"></TextBlock>
                 <ComboBox Name="TransformDropDown" VerticalAlignment="Center" Width="150" SelectionChanged="TransformDropDown_SelectionChanged"></ComboBox>
             </StackPanel>
-            <StackPanel Orientation="Horizontal" Margin="0, 5">
+            <StackPanel Orientation="Horizontal">
                 <TextBlock Name="InfoTextBlock" Text="">Choose a transform from the dropdown menu.</TextBlock>
             </StackPanel>
         </StackPanel>
@@ -52,38 +52,61 @@
                     >
             </local:LiveImage>
         </Border>
-        <StackPanel Name="ControlStackPanel" Grid.Column="2" Grid.Row="1" Margin="20, 0">
-            <StackPanel Orientation="Horizontal" Margin="0, 0">
-                <Button Name="ClearButton" Margin="0, 0, 5, 0" Click="ClearButton_Click">Clear</Button>
-                <Button Name="VectorButton" Margin="5, 0" Click="VectorButton_Click">Vector Field</Button>
-                <Button Name="OverlayButton" Margin="5, 0" Click="OverlayButton_Click">Show Overlay</Button>
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Margin="0, 10">
-                <TextBlock Text="x" VerticalAlignment="Center"></TextBlock>
-                <TextBox Name="xTextBox" Margin="10, 0" TextAlignment="Right" Width="70"></TextBox>
-                <TextBlock Text="y" VerticalAlignment="Center"></TextBlock>
-                <TextBox Name="yTextBox" Margin="10, 0" TextAlignment="Right" Width="70"></TextBox>
-                <Button Name="GetPixelButton" Click="GetPixelButton_Click">Get Pixel</Button>
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Margin="0, 10">
-                <TextBlock Text="R" VerticalAlignment="Center" Padding="5,2" Foreground="white" Background="red"></TextBlock>
-                <TextBlock Name="rTextBlock" Margin="10, 0" TextAlignment="Right" Width="50"></TextBlock>
-                <TextBlock Text="G" VerticalAlignment="Center" Padding="5,2" Foreground="white" Background="green"></TextBlock>
-                <TextBlock Name="gTextBlock" Margin="10, 0" TextAlignment="Right" Width="50"></TextBlock>
-                <TextBlock Text="B" VerticalAlignment="Center" Padding="5,2" Foreground="white" Background="blue"></TextBlock>
-                <TextBlock Name="bTextBlock" Margin="10, 0" TextAlignment="Right" Width="50"></TextBlock>
-                <TextBlock Text="A" VerticalAlignment="Center" Padding="5,2" Foreground="white" Background="Black"></TextBlock>
-                <TextBlock Name="aTextBlock" Margin="10, 0" TextAlignment="Right" Width="50"></TextBlock>
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Margin="0, 10">
-                <TextBlock Text="x' = " VerticalAlignment="Center"></TextBlock>
-                <TextBlock Name="fxTextBlock" Margin="10, 0" TextAlignment="Right" Width="50"></TextBlock>
-                <TextBlock Text="y' = " VerticalAlignment="Center"></TextBlock>
-                <TextBlock Name="fyTextBlock" Margin="10, 0" TextAlignment="Right" Width="50"></TextBlock>
-            </StackPanel>
-            <TextBox Name="MathTextBox" AcceptsReturn="True" AcceptsTab="true" TextWrapping="Wrap" Width="350" Height="100"></TextBox>
-            <TextBlock Name="MathTextResponse" Width="350" Margin="10" TextWrapping="Wrap" PointerReleased="MathTextResponse_PointerReleased"></TextBlock>
-        </StackPanel>
+        <TabControl Grid.Column="2" Grid.Row="1">
+            <TabItem Header="Info" FontSize="14">
+                <StackPanel Name="ControlStackPanel">
+                    <StackPanel Orientation="Horizontal">
+                        <Button Name="ClearButton" Click="ClearButton_Click">Clear</Button>
+                        <Button Name="VectorButton" Click="VectorButton_Click">Vector Field</Button>
+                        <Button Name="OverlayButton" Click="OverlayButton_Click">Show Overlay</Button>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="x" VerticalAlignment="Center"></TextBlock>
+                        <TextBox Name="xTextBox" TextAlignment="Right" Width="70"></TextBox>
+                        <TextBlock Text="y" VerticalAlignment="Center"></TextBlock>
+                        <TextBox Name="yTextBox" TextAlignment="Right" Width="70"></TextBox>
+                        <Button Name="GetPixelButton" Click="GetPixelButton_Click">Get Pixel</Button>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="R" VerticalAlignment="Center" Padding="5,2" Foreground="white" Background="red"></TextBlock>
+                        <TextBlock Name="rTextBlock" TextAlignment="Right" Width="50"></TextBlock>
+                        <TextBlock Text="G" VerticalAlignment="Center" Padding="5,2" Foreground="white" Background="green"></TextBlock>
+                        <TextBlock Name="gTextBlock" TextAlignment="Right" Width="50"></TextBlock>
+                        <TextBlock Text="B" VerticalAlignment="Center" Padding="5,2" Foreground="white" Background="blue"></TextBlock>
+                        <TextBlock Name="bTextBlock" TextAlignment="Right" Width="50"></TextBlock>
+                        <TextBlock Text="A" VerticalAlignment="Center" Padding="5,2" Foreground="white" Background="Black"></TextBlock>
+                        <TextBlock Name="aTextBlock" TextAlignment="Right" Width="50"></TextBlock>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="x' = " VerticalAlignment="Center"></TextBlock>
+                        <TextBlock Name="fxTextBlock" TextAlignment="Right" Width="50"></TextBlock>
+                        <TextBlock Text="y' = " VerticalAlignment="Center"></TextBlock>
+                        <TextBlock Name="fyTextBlock" TextAlignment="Right" Width="50"></TextBlock>
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
+            <TabItem Header="Edit Transform" FontSize="14" IsSelected="True">
+                <StackPanel>
+                    <TextBlock Name="XFunctionLabel">X Function</TextBlock>
+                    <TextBox Name="XFunctionTextBox" AcceptsReturn="True" AcceptsTab="true" TextWrapping="Wrap" Width="370" Height="80" HorizontalAlignment="Left" TextChanged="XFunctionTextBox_TextChanged"></TextBox>
+                    <Border Name="MathXResponseBorder" Opacity="0" Classes="Error">
+                        <TextBlock Name="MathXResponse" Width="350" Margin="0,7" TextWrapping="Wrap" FontSize="12" PointerReleased="MathTextResponse_PointerReleased"></TextBlock>
+                    </Border>
+                    <TextBlock Name="YFunctionLabel">Y Function</TextBlock>
+                    <TextBox Name="YFunctionTextBox" AcceptsReturn="True" AcceptsTab="true" TextWrapping="Wrap" Width="370" Height="80" HorizontalAlignment="Left" TextChanged="YFunctionTextBox_TextChanged"></TextBox>
+                    <Border Name="MathYResponseBorder" Opacity="0" Classes="Error">
+                        <TextBlock Name="MathYResponse" Width="350" TextWrapping="Wrap" PointerReleased="MathTextResponse_PointerReleased">Test</TextBlock>
+                    </Border>
+                    <Button Name="UpdateTransformButton">Update</Button>
+                </StackPanel>
+            </TabItem>
+            <TabItem Header="Check Math" FontSize="14">
+                <StackPanel>
+                    <TextBox Name="MathTextBox" AcceptsReturn="True" AcceptsTab="true" TextWrapping="Wrap" Width="350" Height="100" TextChanged="MathTextBox_TextChanged"></TextBox>
+                    <TextBlock Name="MathTextResponse" Width="350" TextWrapping="Wrap" PointerReleased="MathTextResponse_PointerReleased"></TextBlock>
+                </StackPanel>
+            </TabItem>
+        </TabControl>
         <StackPanel Orientation="Horizontal" Grid.Column="1" Grid.Row="2">
             <TextBlock Text="t = "></TextBlock>
             <TextBlock Name="TimeTextBlock" Text="0"></TextBlock>

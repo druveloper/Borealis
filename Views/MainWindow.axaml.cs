@@ -84,8 +84,6 @@ public partial class MainWindow : Window
 
         // Drawer.DrawOverlay(-1, 1, System.Drawing.Color.Red);
         // MainImage.Render();
-
-        MathTextBox.TextChanged += MathTextBox_TextInput;
     }
 
     private void backgroundTask()
@@ -441,11 +439,11 @@ public partial class MainWindow : Window
         Transform = typeof(Borealis.Transforms).GetMethod(transformName)?.CreateDelegate<PointTransform>() ?? Transforms.None;
     }
 
-    private void MathTextBox_TextInput(object? sender, TextChangedEventArgs e)
+    private void MathTextBox_TextChanged(object? sender, TextChangedEventArgs e)
     {
         try
         {
-            MathTextResponse.Text = MathValidator.ValidateMathExpression(MathTextBox.Text ?? "");
+            MathTextResponse.Text = MathValidator.ValidateMathExpression(MathTextBox.Text ?? "", true);
         }
         catch (ApplicationException ex)
         {
@@ -461,6 +459,34 @@ public partial class MainWindow : Window
         {
             int position = Int32.Parse(match.Groups[1].Value);
             MathTextBox.CaretIndex = position;
+        }
+    }
+
+    private void XFunctionTextBox_TextChanged(object? sender, TextChangedEventArgs e)
+    {
+        try
+        {
+            MathValidator.ValidateMathExpression(XFunctionTextBox.Text ?? "");
+            MathXResponseBorder.Opacity = 0;
+        }
+        catch (ApplicationException ex)
+        {
+            MathXResponse.Text = ex.Message;
+            MathXResponseBorder.Opacity = 1;
+        }
+    }
+
+    private void YFunctionTextBox_TextChanged(object? sender, TextChangedEventArgs e)
+    {
+        try
+        {
+            MathValidator.ValidateMathExpression(YFunctionTextBox.Text ?? "");
+            MathYResponseBorder.Opacity = 0;
+        }
+        catch (ApplicationException ex)
+        {
+            MathYResponse.Text = ex.Message;
+            MathYResponseBorder.Opacity = 1;
         }
     }
 }

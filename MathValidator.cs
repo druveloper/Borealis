@@ -73,7 +73,7 @@ public static class MathValidator
     /// <param name="mathExpression"></param>
     /// <returns>The C-compliant equivalent of the given math expression</returns>
     /// <exception cref="ApplicationException"></exception>
-    public static string ValidateMathExpression(string mathExpression) //, string[] specialWords = Array.Empty<string>())
+    public static string ValidateMathExpression(string mathExpression, bool debug = false) //, string[] specialWords = Array.Empty<string>())
     {
         // ***** validate characters *****
 
@@ -118,7 +118,7 @@ public static class MathValidator
 
         // ***** validate words and arguments *****
 
-        var cleanEpression = validateSyntax(mathExpression, 0, true);
+        var cleanEpression = validateSyntax(mathExpression, 0, debug);
 
         return cleanEpression;
     }
